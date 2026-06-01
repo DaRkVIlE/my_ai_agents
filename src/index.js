@@ -21,6 +21,9 @@ function loadClientConfig(clientId) {
 
 // Multi-tenant webhook endpoint
 app.post('/api/webhook/:clientId', async (req, res) => {
+    console.log(`[Webhook Hit] clientId: ${req.params.clientId}`);
+    console.log(`[Payload]:`, JSON.stringify(req.body, null, 2));
+
     try {
         const { clientId } = req.params;
         const config = loadClientConfig(clientId);
@@ -48,9 +51,14 @@ app.post('/api/webhook/:clientId', async (req, res) => {
 
         // Get message text
         const message = msgData.message;
-        const text = message.conversation || 
-                     message.extendedTextMessage?.text || 
-                     message.audioMessage ? "[ÁUDIO/MÍDIA]" : "";
+        let text = "";
+        if (message.conversation) {
+            text = message.conversation;
+        } else if (message.extendedTextMessage?.text) {
+            text = message.extendedTextMessage.text;
+        } else if (message.audioMessage || message.imageMessage || message.videoMessage || message.documentMessage) {
+            text = "[ÁUDIO/MÍDIA]";
+        }
 
         if (!text) {
             return res.status(200).send('No text');
