@@ -19,9 +19,9 @@ function loadClientConfig(clientId) {
     return null;
 }
 
-// Multi-tenant webhook endpoint (handles both flat and webhookByEvents URLs)
-app.post(['/api/webhook/:clientId', '/api/webhook/:clientId/:event'], async (req, res) => {
-    console.log(`[Webhook Hit] clientId: ${req.params.clientId}`);
+// Webhook handler logic
+async function handleWebhook(req, res) {
+    console.log(`[Webhook Hit] clientId: ${req.params.clientId}, event: ${req.params.event || 'none'}`);
     console.log(`[Payload]:`, JSON.stringify(req.body, null, 2));
 
     try {
@@ -80,7 +80,11 @@ app.post(['/api/webhook/:clientId', '/api/webhook/:clientId/:event'], async (req
         console.error('[Webhook] Error processing request:', error);
         res.status(500).send('Internal Server Error');
     }
-});
+}
+
+// Multi-tenant webhook endpoints
+app.post('/api/webhook/:clientId', handleWebhook);
+app.post('/api/webhook/:clientId/:event', handleWebhook);
 
 // Health check
 app.get('/health', (req, res) => {
