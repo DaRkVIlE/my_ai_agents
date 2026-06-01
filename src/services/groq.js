@@ -19,7 +19,8 @@ Público Alvo: ${config.targetAudience || ''}.
 Abaixo estão exemplos de como você deve responder:
 ${JSON.stringify(config.attendant?.examples || [])}
 
-Seja conciso, prestativo e persuasivo. Apenas responda ao usuário como o assistente do negócio.`;
+Seja conciso, prestativo e persuasivo. Apenas responda ao usuário como o assistente do negócio.
+${config.attendant?.greeting ? `\nIMPORTANTE: A sua PRIMEIRA MENSAGEM ao cliente deve ser EXATAMENTE esta saudação: "${config.attendant.greeting}". Adapte apenas o "Boa tarde" para o horário atual se necessário, mas mantenha o restante do texto idêntico.` : ''}`;
 
         memory[clientId][remoteJid] = [
             { role: 'system', content: systemPrompt }

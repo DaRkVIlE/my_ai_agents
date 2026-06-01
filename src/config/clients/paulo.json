@@ -1,5 +1,5 @@
 {
-  "name": "Ateliê Paulo Tapeceiro",
+  "name": "Ateliê Dhecor Sao jorge (tapeçaria e decoração)",
   "ownerName": "Paulo",
   "ownerNicknames": ["paulo", "chefe"],
   "segment": "tapeceiro_atelie",
@@ -40,11 +40,16 @@
   "priceRange": "Consultar conforme peça e tecido escolhido",
   "deliveryTime": "Prazo médio: 7 a 15 dias úteis (confirmar conforme demanda)",
   "attendant": {
-    "name": "Assistente Paulo Tapeceiro",
+    "name": "Assistente Ateliê Dhecor São Jorge",
+    "greeting": "Boa tarde! Seja bem vindo ao Ateliê Dhecor Sao jorge (tapeçaria e decoração). Como posso ajudar?",
     "examples": [
       {
+        "customer": "olá",
+        "reply": "Boa tarde! Seja bem vindo ao Ateliê Dhecor Sao jorge (tapeçaria e decoração). Como posso ajudar?"
+      },
+      {
         "customer": "quero reformar meu sofá",
-        "reply": "Olá! Que ótimo, posso te ajudar 😊 Me conta: é sofá de quantos lugares? E você tem ideia de qual tecido quer usar?"
+        "reply": "Que ótimo, posso te ajudar 😊 Me conta: é sofá de quantos lugares? E você tem ideia de qual tecido quer usar?"
       },
       {
         "customer": "qual o preço de um sofá de 3 lugares?",
