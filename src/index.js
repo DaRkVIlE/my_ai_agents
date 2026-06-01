@@ -19,8 +19,8 @@ function loadClientConfig(clientId) {
     return null;
 }
 
-// Multi-tenant webhook endpoint
-app.post('/api/webhook/:clientId', async (req, res) => {
+// Multi-tenant webhook endpoint (handles both flat and webhookByEvents URLs)
+app.post(['/api/webhook/:clientId', '/api/webhook/:clientId/:event'], async (req, res) => {
     console.log(`[Webhook Hit] clientId: ${req.params.clientId}`);
     console.log(`[Payload]:`, JSON.stringify(req.body, null, 2));
 
