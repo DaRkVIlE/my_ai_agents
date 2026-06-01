@@ -44,8 +44,8 @@ async function handleWebhook(req, res) {
         const remoteJid = msgData.key.remoteJid;
         const fromMe = msgData.key.fromMe;
         
-        // Ignore status broadcasts and own messages
-        if (remoteJid === 'status@broadcast' || fromMe) {
+        // Ignore status broadcasts, own messages, and group messages
+        if (remoteJid === 'status@broadcast' || fromMe || remoteJid.includes('@g.us')) {
             return res.status(200).send('Ignored');
         }
 
