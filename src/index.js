@@ -9,6 +9,8 @@ const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
+const BUILD_VERSION = '2.1.0';
+const BUILD_DATE = '2026-06-02T14:53:00Z';
 
 // Load client config
 function loadClientConfig(clientId) {
@@ -21,8 +23,22 @@ function loadClientConfig(clientId) {
 
 // Webhook handler logic
 async function handleWebhook(req, res) {
-    console.log(`[Webhook Hit] clientId: ${req.params.clientId}, event: ${req.params.event || 'none'}`);
-    console.log(`[Payload]:`, JSON.stringify(req.body, null, 2));
+    const body = req.body;
+
+    // ===== FIRST LINE OF DEFENSE: Block groups IMMEDIATELY =====
+    // Check raw body for ANY group indicator before doing anything else
+    const rawJid = body?.data?.key?.remoteJid || '';
+    const isGroup = rawJid.endsWith('@g.us') || rawJid.includes('@g.us');
+    const isStatus = rawJid === 'status@broadcast';
+    const isFromMe = body?.data?.key?.fromMe === true;
+    
+    if (isGroup || isStatus || isFromMe) {
+        console.log(`[BLOCKED] Group/Status/Self message from ${rawJid} — ignoring`);
+        return res.status(200).send('Ignored');
+    }
+    // ===== END FIRST LINE OF DEFENSE =====
+
+    console.log(`[Webhook Hit] clientId: ${req.params.clientId}, jid: ${rawJid}`);
 
     try {
         const { clientId } = req.params;
@@ -32,8 +48,6 @@ async function handleWebhook(req, res) {
             console.error(`[Webhook] Config not found for client: ${clientId}`);
             return res.status(404).send('Client config not found');
         }
-
-        const body = req.body;
         
         // Evolution API validation
         if (!body || !body.data || !body.data.message) {
@@ -42,12 +56,6 @@ async function handleWebhook(req, res) {
 
         const msgData = body.data;
         const remoteJid = msgData.key.remoteJid;
-        const fromMe = msgData.key.fromMe;
-        
-        // Ignore status broadcasts, own messages, and group messages
-        if (remoteJid === 'status@broadcast' || fromMe || remoteJid.includes('@g.us')) {
-            return res.status(200).send('Ignored');
-        }
 
         // Get message text
         const message = msgData.message;
@@ -89,6 +97,11 @@ app.post('/api/webhook/:clientId/:event', handleWebhook);
 // Health check
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
+});
+
+// Version check — verify which code is actually running
+app.get('/version', (req, res) => {
+    res.json({ version: BUILD_VERSION, buildDate: BUILD_DATE, status: 'running' });
 });
 
 app.listen(PORT, () => {
