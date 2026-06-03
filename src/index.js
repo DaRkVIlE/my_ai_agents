@@ -9,8 +9,8 @@ const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
-const BUILD_VERSION = '2.1.0';
-const BUILD_DATE = '2026-06-02T14:53:00Z';
+const BUILD_VERSION = '2.3.0';
+const BUILD_DATE = '2026-06-03T13:35:00Z';
 
 // Load client config
 function loadClientConfig(clientId) {
@@ -87,17 +87,23 @@ async function handleWebhook(req, res) {
                 base64 = await getMediaBase64(clientId, msgData);
             }
             
-            if (base64) {
-                const transcript = await transcribeAudio(base64);
-                if (transcript) {
-                    text = `[ÁUDIO TRANSCRITO]: ${transcript}`;
-                    console.log(`[${clientId.toUpperCase()}] Transcrição: ${transcript}`);
-                } else {
-                    text = "[ERRO NA TRANSCRIÇÃO DE ÁUDIO]";
-                }
-            } else {
-                text = "[FALHA AO BAIXAR ÁUDIO]";
+            if (!base64) {
+                // Cannot download audio — warn user directly, skip LLM
+                console.warn(`[${clientId.toUpperCase()}] Falha ao obter base64 do áudio de ${remoteJid}`);
+                await sendMessage(clientId, remoteJid, '⚠️ Não consegui baixar o seu áudio. Pode enviar uma mensagem de texto?');
+                return res.status(200).send('Audio download failed');
             }
+
+            const transcript = await transcribeAudio(base64);
+            if (!transcript) {
+                // Transcription failed — warn user directly, skip LLM
+                console.warn(`[${clientId.toUpperCase()}] Falha na transcrição do áudio de ${remoteJid}`);
+                await sendMessage(clientId, remoteJid, '⚠️ Não consegui entender o áudio. Pode tentar novamente ou enviar por texto?');
+                return res.status(200).send('Transcription failed');
+            }
+
+            text = transcript;
+            console.log(`[${clientId.toUpperCase()}] Transcrição: ${transcript}`);
         } else if (message.imageMessage || message.videoMessage || message.documentMessage) {
             text = "[MÍDIA IGNORADA]";
         }
@@ -109,9 +115,19 @@ async function handleWebhook(req, res) {
         console.log(`[${clientId.toUpperCase()}] Mensagem recebida de ${remoteJid} (Admin: ${isAdmin}): ${text}`);
 
         // Generate response via Groq
-        const replyText = await generateResponse(clientId, config, remoteJid, text, isAdmin);
+        const responseObj = await generateResponse(clientId, config, remoteJid, text, isAdmin);
+        const replyText = typeof responseObj === 'string' ? responseObj : responseObj?.text;
+        const greetingToSend = typeof responseObj === 'string' ? null : responseObj?.greeting;
 
-        // Send response via Evolution
+        // Send greeting first if present (first interaction)
+        if (greetingToSend) {
+            await sendMessage(clientId, remoteJid, greetingToSend);
+            console.log(`[${clientId.toUpperCase()}] Greeting enviado para ${remoteJid}`);
+            // Add a small delay to make it natural
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+
+        // Send main response via Evolution
         if (replyText) {
             await sendMessage(clientId, remoteJid, replyText);
             console.log(`[${clientId.toUpperCase()}] Resposta enviada para ${remoteJid}`);

@@ -20,7 +20,7 @@ Abaixo estão exemplos de como você deve responder:
 ${JSON.stringify(config.attendant?.examples || [])}
 
 Seja conciso, prestativo e persuasivo. Apenas responda ao usuário como o assistente do negócio.
-${config.attendant?.greeting ? `\nIMPORTANTE: A sua PRIMEIRA MENSAGEM ao cliente deve ser EXATAMENTE esta saudação: "${config.attendant.greeting}". Adapte apenas o "Boa tarde" para o horário atual se necessário, mas mantenha o restante do texto idêntico.` : ''}`;
+Nunca repita a saudação inicial se já houver mensagens anteriores na conversa.`;
 }
 
 async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false) {
@@ -31,25 +31,38 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
         if (/(modo atendente|modo cliente)/.test(lowerMsg)) {
             if (!memory[clientId]) memory[clientId] = {};
             memory[clientId][remoteJid] = [{ role: 'system', content: getAttendantPrompt(config) }];
-            return "🔄 Modo alterado para: *ATENDENTE (Cliente)*. Como posso ajudá-lo hoje?";
+            return { text: "🔄 Modo alterado para: *ATENDENTE (Cliente)*. Como posso ajudá-lo hoje?", greeting: null };
         }
 
         if (/(modo funcion[áa]rio|modo assistente|modo admin)/.test(lowerMsg)) {
             if (!memory[clientId]) memory[clientId] = {};
             const prompt = config.adminPrompt || "Você é o assistente interno do negócio. Responda de forma direta e prestativa.";
             memory[clientId][remoteJid] = [{ role: 'system', content: prompt }];
-            return "🔄 Modo alterado para: *FUNCIONÁRIO (Admin)*. O que manda, chefe?";
+            return { text: "🔄 Modo alterado para: *FUNCIONÁRIO (Admin)*. O que manda, chefe?", greeting: null };
         }
     }
 
     if (!memory[clientId]) memory[clientId] = {};
+    
+    let greetingToSend = null;
     if (!memory[clientId][remoteJid]) {
         // Initialize memory with system prompt based on config
-        let systemPrompt = (isAdmin && config.adminPrompt) ? config.adminPrompt : getAttendantPrompt(config);
+        const systemPrompt = (isAdmin && config.adminPrompt) ? config.adminPrompt : getAttendantPrompt(config);
+        memory[clientId][remoteJid] = [{ role: 'system', content: systemPrompt }];
 
-        memory[clientId][remoteJid] = [
-            { role: 'system', content: systemPrompt }
-        ];
+        // Pre-inject the greeting as an already-sent assistant message.
+        // This prevents the LLM from being instructed to "always greet first",
+        // which causes it to ignore the actual content (e.g. a transcribed audio).
+        if (!isAdmin && config.attendant?.greeting) {
+            const now = new Date();
+            const hour = now.getHours();
+            let period = 'Bom dia';
+            if (hour >= 12 && hour < 18) period = 'Boa tarde';
+            else if (hour >= 18) period = 'Boa noite';
+            const greeting = config.attendant.greeting.replace(/bom dia|boa tarde|boa noite/i, period);
+            memory[clientId][remoteJid].push({ role: 'assistant', content: greeting });
+            greetingToSend = greeting; // will be sent before processing user message
+        }
     }
 
     const chatHistory = memory[clientId][remoteJid];
@@ -72,12 +85,13 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
         const reply = completion.choices[0].message.content;
         chatHistory.push({ role: 'assistant', content: reply });
 
-        return reply;
+        return { text: reply, greeting: greetingToSend };
     } catch (error) {
         console.error(`[Groq Error - ${clientId}]`, error.message);
-        return "Desculpe, estou com uma instabilidade no momento. Posso ajudar em breve.";
+        return { text: "Desculpe, estou com uma instabilidade no momento. Posso ajudar em breve.", greeting: null };
     }
 }
+
 
 async function transcribeAudio(base64Audio) {
     if (!base64Audio) return null;
