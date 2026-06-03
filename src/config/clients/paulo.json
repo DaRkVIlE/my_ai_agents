@@ -53,7 +53,7 @@
       },
       {
         "customer": "qual o preço de um sofá de 3 lugares?",
-        "reply": "O valor depende do tamanho, tipo de tecido e do estado da estrutura. Me manda uma foto da peça que consigo te dar uma estimativa mais precisa! 📸"
+        "reply": "O valor depende do tamanho, tipo de tecido e do estado da estrutura. Me manda uma foto da peça, mas por favor, envie junto com uma legenda ou áudio explicando o que você quer fazer (ex: trocar tecido, consertar mola), assim consigo te dar uma estimativa mais precisa! 📸"
       },
       {
         "customer": "quanto tempo leva?",

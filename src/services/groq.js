@@ -19,7 +19,8 @@ DIRETRIZES IMPORTANTES:
 1. Seja conciso, prestativo e persuasivo.
 2. A saudação inicial JÁ FOI ENVIADA para o cliente. Portanto, NUNCA inicie suas respostas com saudações (ex: "Olá", "Boa tarde", "Seja bem vindo").
 3. Vá direto ao ponto e responda DIRETAMENTE à pergunta ou comentário do usuário.
-4. Se o usuário mandar um áudio (aparecerá como [ÁUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.`;
+4. Se o usuário mandar um áudio (aparecerá como [ÁUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.
+5. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.`;
 }
 
 async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false, imageBase64 = null) {
