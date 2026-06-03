@@ -26,18 +26,20 @@ ${config.attendant?.greeting ? `\nIMPORTANTE: A sua PRIMEIRA MENSAGEM ao cliente
 async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false) {
     const lowerMsg = userMessage.toLowerCase();
     
-    // Command interception for persona switching (useful for demos)
-    if (/(modo atendente|modo cliente)/.test(lowerMsg)) {
-        if (!memory[clientId]) memory[clientId] = {};
-        memory[clientId][remoteJid] = [{ role: 'system', content: getAttendantPrompt(config) }];
-        return "🔄 Modo alterado para: *ATENDENTE (Cliente)*. Como posso ajudá-lo hoje?";
-    }
+    // Command interception for persona switching (only for admins/demos)
+    if (isAdmin) {
+        if (/(modo atendente|modo cliente)/.test(lowerMsg)) {
+            if (!memory[clientId]) memory[clientId] = {};
+            memory[clientId][remoteJid] = [{ role: 'system', content: getAttendantPrompt(config) }];
+            return "🔄 Modo alterado para: *ATENDENTE (Cliente)*. Como posso ajudá-lo hoje?";
+        }
 
-    if (/(modo funcion[áa]rio|modo assistente|modo admin)/.test(lowerMsg)) {
-        if (!memory[clientId]) memory[clientId] = {};
-        const prompt = config.adminPrompt || "Você é o assistente interno do negócio. Responda de forma direta e prestativa.";
-        memory[clientId][remoteJid] = [{ role: 'system', content: prompt }];
-        return "🔄 Modo alterado para: *FUNCIONÁRIO (Admin)*. O que manda, chefe?";
+        if (/(modo funcion[áa]rio|modo assistente|modo admin)/.test(lowerMsg)) {
+            if (!memory[clientId]) memory[clientId] = {};
+            const prompt = config.adminPrompt || "Você é o assistente interno do negócio. Responda de forma direta e prestativa.";
+            memory[clientId][remoteJid] = [{ role: 'system', content: prompt }];
+            return "🔄 Modo alterado para: *FUNCIONÁRIO (Admin)*. O que manda, chefe?";
+        }
     }
 
     if (!memory[clientId]) memory[clientId] = {};
