@@ -1,4 +1,7 @@
 const Groq = require('groq-sdk');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY
@@ -8,11 +11,15 @@ const groq = new Groq({
 // Schema: { [clientId]: { [remoteJid]: [ {role, content} ] } }
 const memory = {};
 
-async function generateResponse(clientId, config, remoteJid, userMessage) {
+async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false) {
     if (!memory[clientId]) memory[clientId] = {};
     if (!memory[clientId][remoteJid]) {
         // Initialize memory with system prompt based on config
-        const systemPrompt = `Você é o assistente virtual do negócio: ${config.name}.
+        let systemPrompt = '';
+        if (isAdmin && config.adminPrompt) {
+            systemPrompt = config.adminPrompt;
+        } else {
+            systemPrompt = `Você é o assistente virtual do negócio: ${config.name}.
 Tom de voz: ${config.tone}.
 Serviços: ${JSON.stringify(config.services || {})}.
 Público Alvo: ${config.targetAudience || ''}.
@@ -21,6 +28,7 @@ ${JSON.stringify(config.attendant?.examples || [])}
 
 Seja conciso, prestativo e persuasivo. Apenas responda ao usuário como o assistente do negócio.
 ${config.attendant?.greeting ? `\nIMPORTANTE: A sua PRIMEIRA MENSAGEM ao cliente deve ser EXATAMENTE esta saudação: "${config.attendant.greeting}". Adapte apenas o "Boa tarde" para o horário atual se necessário, mas mantenha o restante do texto idêntico.` : ''}`;
+        }
 
         memory[clientId][remoteJid] = [
             { role: 'system', content: systemPrompt }
@@ -54,4 +62,31 @@ ${config.attendant?.greeting ? `\nIMPORTANTE: A sua PRIMEIRA MENSAGEM ao cliente
     }
 }
 
-module.exports = { generateResponse };
+async function transcribeAudio(base64Audio) {
+    if (!base64Audio) return null;
+    try {
+        // Strip out metadata if present e.g., "data:audio/ogg;base64,"
+        const base64Data = base64Audio.replace(/^data:audio\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        // Save to temporary file
+        const tempFilePath = path.join(os.tmpdir(), `audio_${Date.now()}.ogg`);
+        fs.writeFileSync(tempFilePath, buffer);
+        
+        const transcription = await groq.audio.transcriptions.create({
+            file: fs.createReadStream(tempFilePath),
+            model: "whisper-large-v3",
+            language: "pt"
+        });
+        
+        // Cleanup temp file
+        fs.unlinkSync(tempFilePath);
+        
+        return transcription.text;
+    } catch (error) {
+        console.error("[Groq Audio Error]", error.message);
+        return null;
+    }
+}
+
+module.exports = { generateResponse, transcribeAudio };

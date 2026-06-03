@@ -29,4 +29,27 @@ async function sendMessage(clientId, remoteJid, text) {
     }
 }
 
-module.exports = { sendMessage };
+async function getMediaBase64(clientId, messageObj) {
+    const apiUrl = process.env.EVOLUTION_API_URL || 'https://evolution.kairos-os.com';
+    const globalApiKey = process.env.EVOLUTION_GLOBAL_APIKEY;
+    const instanceName = process.env.INSTANCE_NAME || `${clientId}`;
+
+    try {
+        const response = await axios.post(
+            `${apiUrl}/chat/getBase64FromMediaMessage/${instanceName}`,
+            { message: messageObj },
+            {
+                headers: {
+                    'apikey': globalApiKey,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        return response.data.base64;
+    } catch (error) {
+        console.error(`[Evolution Media Error - ${clientId}]`, error.message);
+        return null;
+    }
+}
+
+module.exports = { sendMessage, getMediaBase64 };

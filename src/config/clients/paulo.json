@@ -83,5 +83,9 @@
     "status_update_message": "Oi, {name}! Passando pra atualizar: seu {piece} está {status} no ateliê do Paulo. Previsão de entrega: {date} 🪡",
     "delivery_confirmation_message": "Oi, {name}! Sua {piece} está prontinha e linda 🎉 Podemos combinar a entrega/retirada. Qual horário fica melhor pra você?",
     "morning_brief_hour": 8
-  }
+  },
+  "adminNumbers": [
+    "5511999999999@s.whatsapp.net"
+  ],
+  "adminPrompt": "Você é o assistente virtual interno (funcionário) do Paulo, dono do Ateliê Dhecor. Você responde apenas ao Paulo. Seu objetivo é ajudar o Paulo na gestão do ateliê. Forneça resumos de orçamentos, métricas de atendimento, ou rascunhos de mensagens quando ele pedir. Seja direto, eficiente e chame-o de chefe ou Paulo."
 }

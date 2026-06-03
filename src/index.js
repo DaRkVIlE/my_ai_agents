@@ -2,8 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { generateResponse } = require('./services/groq');
-const { sendMessage } = require('./services/evolution');
+const { generateResponse, transcribeAudio } = require('./services/groq');
+const { sendMessage, getMediaBase64 } = require('./services/evolution');
 
 const app = express();
 app.use(express.json());
@@ -57,25 +57,51 @@ async function handleWebhook(req, res) {
         const msgData = body.data;
         const remoteJid = msgData.key.remoteJid;
 
+        // Admin detection
+        const isAdmin = config.adminNumbers && config.adminNumbers.includes(remoteJid);
+
         // Get message text
         const message = msgData.message;
         let text = "";
+        
         if (message.conversation) {
             text = message.conversation;
         } else if (message.extendedTextMessage?.text) {
             text = message.extendedTextMessage.text;
-        } else if (message.audioMessage || message.imageMessage || message.videoMessage || message.documentMessage) {
-            text = "[ÁUDIO/MÍDIA]";
+        } else if (message.audioMessage) {
+            console.log(`[${clientId.toUpperCase()}] Áudio recebido de ${remoteJid}, iniciando transcrição...`);
+            
+            // 1. Try to get base64 directly if Evolution sent it
+            let base64 = message.audioMessage.base64;
+            
+            // 2. Fallback to API if not present
+            if (!base64) {
+                base64 = await getMediaBase64(clientId, msgData);
+            }
+            
+            if (base64) {
+                const transcript = await transcribeAudio(base64);
+                if (transcript) {
+                    text = `[ÁUDIO TRANSCRITO]: ${transcript}`;
+                    console.log(`[${clientId.toUpperCase()}] Transcrição: ${transcript}`);
+                } else {
+                    text = "[ERRO NA TRANSCRIÇÃO DE ÁUDIO]";
+                }
+            } else {
+                text = "[FALHA AO BAIXAR ÁUDIO]";
+            }
+        } else if (message.imageMessage || message.videoMessage || message.documentMessage) {
+            text = "[MÍDIA IGNORADA]";
         }
 
         if (!text) {
             return res.status(200).send('No text');
         }
 
-        console.log(`[${clientId.toUpperCase()}] Mensagem recebida de ${remoteJid}: ${text}`);
+        console.log(`[${clientId.toUpperCase()}] Mensagem recebida de ${remoteJid} (Admin: ${isAdmin}): ${text}`);
 
         // Generate response via Groq
-        const replyText = await generateResponse(clientId, config, remoteJid, text);
+        const replyText = await generateResponse(clientId, config, remoteJid, text, isAdmin);
 
         // Send response via Evolution
         if (replyText) {
