@@ -27,7 +27,7 @@ async function chatWithSambanova(messages, options = {}) {
     const response = await axios.post(
         'https://api.sambanova.ai/v1/chat/completions',
         {
-            model: 'Meta-Llama-3.3-70B-Instruct',
+            model: options.model || 'Meta-Llama-3.3-70B-Instruct',
             messages,
             temperature: options.temperature ?? 0.5,
             max_tokens: options.max_tokens || 300,
@@ -52,6 +52,21 @@ async function chatWithSambanova(messages, options = {}) {
  */
 async function chat(messages, options = {}) {
     const primaryProvider = process.env.LLM_PRIMARY || 'groq';
+
+    // Detecção automática de Visão Computacional (Multimodal)
+    const requiresVision = messages.some(msg => 
+        Array.isArray(msg.content) && msg.content.some(c => c.type === 'image_url')
+    );
+
+    if (requiresVision) {
+        console.log('[LLM] Imagem detectada no payload. Alternando para modelo Vision.');
+        // Vamos usar o modelo 11b por padrão para visão por ser mais rápido e barato
+        if (!options.model) {
+            options.model = primaryProvider === 'sambanova' 
+                ? 'Llama-3.2-11B-Vision-Instruct' 
+                : 'llama-3.2-11b-vision-preview';
+        }
+    }
 
     // Tenta provider primário
     try {

@@ -22,7 +22,7 @@ DIRETRIZES IMPORTANTES:
 4. Se o usuário mandar um áudio (aparecerá como [ÁUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.`;
 }
 
-async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false) {
+async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false, imageBase64 = null) {
     const lowerMsg = userMessage.toLowerCase();
 
     // Command interception for persona switching (only for admins)
@@ -64,7 +64,19 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
         }
     }
 
-    chatHistory.push({ role: 'user', content: userMessage });
+    // Preparar conteúdo do usuário (suporte a Visão)
+    let content;
+    if (imageBase64) {
+        const dataUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+        content = [
+            { type: 'text', text: userMessage && userMessage !== '[MÍDIA IGNORADA]' ? userMessage : 'O cliente enviou esta imagem. Analise-a e responda de acordo com seu papel.' },
+            { type: 'image_url', image_url: { url: dataUrl } }
+        ];
+    } else {
+        content = userMessage;
+    }
+
+    chatHistory.push({ role: 'user', content });
 
     // Keep history bounded (max 20 messages + system prompt)
     if (chatHistory.length > 22) {
@@ -72,11 +84,23 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
     }
 
     try {
+        // Envia para o LLM
         const reply = await chat(chatHistory);
         chatHistory.push({ role: 'assistant', content: reply });
 
-        // Persist updated session
-        await setSession(clientId, remoteJid, chatHistory);
+        // Sanitização de Memória: Remover o base64 gigante do histórico antes de salvar no Redis
+        const historyToSave = chatHistory.map(msg => {
+            if (Array.isArray(msg.content)) {
+                return {
+                    role: msg.role,
+                    content: msg.content.map(c => c.type === 'image_url' ? { type: 'text', text: '[IMAGEM PROCESSADA NESTE TURNO]' } : c)
+                };
+            }
+            return msg;
+        });
+
+        // Persist updated session (sem as imagens pesadas)
+        await setSession(clientId, remoteJid, historyToSave);
 
         return { text: reply, greeting: greetingToSend };
     } catch (error) {

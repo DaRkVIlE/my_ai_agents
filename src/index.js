@@ -116,9 +116,10 @@ async function handleWebhook(req, res) {
             }
         }
 
-        // ── Extrair texto / transcrever áudio ────────────────────────────────
+        // ── Extrair texto / transcrever áudio / capturar imagem ──────────────
         const message = msgData.message;
         let text = '';
+        let imageBase64 = null;
 
         if (message.conversation) {
             text = message.conversation;
@@ -150,15 +151,33 @@ async function handleWebhook(req, res) {
 
             text = transcript;
             console.log(`[Audio] Transcrição: "${transcript}"`);
-        } else if (message.imageMessage || message.videoMessage || message.documentMessage) {
+        } else if (message.imageMessage) {
+            console.log(`[Image] Recebida de ${remoteJid} — iniciando captura de base64`);
+            text = message.imageMessage.caption || '';
+            
+            let base64 = message.imageMessage.base64;
+            if (!base64) {
+                console.log('[Image] base64 inline ausente — buscando via API Evolution...');
+                base64 = await getMediaBase64(clientId, msgData, config);
+            }
+
+            if (!base64) {
+                console.warn(`[Image] Falha ao obter base64 da imagem de ${remoteJid}`);
+                await sendMessage(clientId, remoteJid, '⚠️ Tive um problema ao baixar a foto. Pode descrever o que era?', config);
+                return res.status(200).send('Image download failed');
+            }
+            
+            imageBase64 = base64;
+            console.log(`[Image] Imagem capturada com sucesso.`);
+        } else if (message.videoMessage || message.documentMessage) {
             text = '[MÍDIA IGNORADA]';
         }
 
-        if (!text) {
-            return res.status(200).send('No text');
+        if (!text && !imageBase64) {
+            return res.status(200).send('No content');
         }
 
-        console.log(`[${clientId.toUpperCase()}] De ${remoteJid} (Admin: ${isAdmin}): ${text}`);
+        console.log(`[${clientId.toUpperCase()}] De ${remoteJid} (Admin: ${isAdmin}): ${text || '[Imagem sem legenda]'}`);
 
         // ── Detectar handoff ANTES de enviar para o LLM ──────────────────────
         if (!isAdmin && detectHandoff(text)) {
@@ -175,7 +194,7 @@ async function handleWebhook(req, res) {
         }
 
         // ── Gerar resposta via LLM ───────────────────────────────────────────
-        const responseObj = await generateResponse(clientId, config, remoteJid, text, isAdmin);
+        const responseObj = await generateResponse(clientId, config, remoteJid, text, isAdmin, imageBase64);
         const replyText = typeof responseObj === 'string' ? responseObj : responseObj?.text;
         const greetingToSend = typeof responseObj === 'string' ? null : responseObj?.greeting;
 
