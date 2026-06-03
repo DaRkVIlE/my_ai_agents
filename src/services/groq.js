@@ -111,8 +111,8 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
 async function transcribeAudio(base64Audio) {
     if (!base64Audio) return null;
     try {
-        // Strip out metadata if present e.g., "data:audio/ogg;base64,"
-        const base64Data = base64Audio.replace(/^data:audio\/\w+;base64,/, "");
+        // Garante a extração limpa do base64 independente do prefixo (ex: data:audio/ogg; codecs=opus;base64,)
+        const base64Data = base64Audio.includes('base64,') ? base64Audio.split('base64,')[1] : base64Audio;
         const buffer = Buffer.from(base64Data, 'base64');
         
         // Save to temporary file
