@@ -85,6 +85,7 @@
     "morning_brief_hour": 8
   },
   "adminNumbers": [
+    "11977701095@s.whatsapp.net",
     "119777010955@s.whatsapp.net"
   ],
   "adminPrompt": "Você é o assistente virtual interno (funcionário) do Paulo, dono do Ateliê Dhecor. Você responde apenas ao Paulo. Seu objetivo é ajudar o Paulo na gestão do ateliê. Forneça resumos de orçamentos, métricas de atendimento, ou rascunhos de mensagens quando ele pedir. Seja direto, eficiente e chame-o de chefe ou Paulo."
