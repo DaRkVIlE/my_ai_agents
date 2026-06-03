@@ -19,8 +19,11 @@ Público Alvo: ${config.targetAudience || ''}.
 Abaixo estão exemplos de como você deve responder:
 ${JSON.stringify(config.attendant?.examples || [])}
 
-Seja conciso, prestativo e persuasivo. Apenas responda ao usuário como o assistente do negócio.
-Nunca repita a saudação inicial se já houver mensagens anteriores na conversa.`;
+DIRETRIZES IMPORTANTES:
+1. Seja conciso, prestativo e persuasivo.
+2. A saudação inicial JÁ FOI ENVIADA para o cliente. Portanto, NUNCA inicie suas respostas com saudações (ex: "Olá", "Boa tarde", "Seja bem vindo").
+3. Vá direto ao ponto e responda DIRETAMENTE à pergunta ou comentário do usuário.
+4. Se o usuário mandar um áudio (aparecerá como [ÁUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.`;
 }
 
 async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false) {
@@ -31,6 +34,18 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
         if (/(modo atendente|modo cliente)/.test(lowerMsg)) {
             if (!memory[clientId]) memory[clientId] = {};
             memory[clientId][remoteJid] = [{ role: 'system', content: getAttendantPrompt(config) }];
+            
+            // Pre-inject the greeting to simulate that it was already sent, so the LLM has context
+            if (config.attendant?.greeting) {
+                const now = new Date();
+                const hour = now.getHours();
+                let period = 'Bom dia';
+                if (hour >= 12 && hour < 18) period = 'Boa tarde';
+                else if (hour >= 18) period = 'Boa noite';
+                const greeting = config.attendant.greeting.replace(/bom dia|boa tarde|boa noite/i, period);
+                memory[clientId][remoteJid].push({ role: 'assistant', content: greeting });
+            }
+            
             return { text: "🔄 Modo alterado para: *ATENDENTE (Cliente)*. Como posso ajudá-lo hoje?", greeting: null };
         }
 
