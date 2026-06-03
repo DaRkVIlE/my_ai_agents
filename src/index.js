@@ -58,7 +58,15 @@ async function handleWebhook(req, res) {
         const remoteJid = msgData.key.remoteJid;
 
         // Admin detection
-        const isAdmin = config.adminNumbers && config.adminNumbers.includes(remoteJid);
+        let isAdmin = false;
+        if (config.adminNumbers) {
+            const remoteDigits = remoteJid.replace(/\D/g, '');
+            isAdmin = config.adminNumbers.some(adminNum => {
+                const adminDigits = adminNum.replace(/\D/g, '');
+                // Compara os últimos 8 dígitos para evitar bug do 9º dígito
+                return remoteDigits.endsWith(adminDigits.slice(-8));
+            });
+        }
 
         // Get message text
         const message = msgData.message;
