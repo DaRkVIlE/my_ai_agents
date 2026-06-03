@@ -84,6 +84,8 @@
     "delivery_confirmation_message": "Oi, {name}! Sua {piece} está prontinha e linda 🎉 Podemos combinar a entrega/retirada. Qual horário fica melhor pra você?",
     "morning_brief_hour": 8
   },
+  "instanceName": "",
+  "instanceApiKey": "",
   "adminNumbers": [
     "11977701095@s.whatsapp.net",
     "119777010955@s.whatsapp.net"

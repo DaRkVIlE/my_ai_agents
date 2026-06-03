@@ -1,38 +1,41 @@
 const axios = require('axios');
 
-async function sendMessage(clientId, remoteJid, text) {
+/**
+ * Envia mensagem de texto via Evolution API.
+ * instanceName e apiKey são lidos da config do cliente (multitenant).
+ * Fallback para variáveis de ambiente globais.
+ */
+async function sendMessage(clientId, remoteJid, text, config = {}) {
     const apiUrl = process.env.EVOLUTION_API_URL || 'https://evolution.kairos-os.com';
-    const globalApiKey = process.env.EVOLUTION_GLOBAL_APIKEY;
-    
-    // Default to a generic instance name based on client, or override with env var
-    // Actually, Evolution instance is global in Railway right now, let's use the env var or fallback
-    // Since it's multi-tenant but maybe using a single WhatsApp number, we use INSTANCE_NAME or fallback to clientId
-    const instanceName = process.env.INSTANCE_NAME || `${clientId}`;
+    const instanceName = config.instanceName || process.env.INSTANCE_NAME || clientId;
+    const apiKey = config.instanceApiKey || process.env.EVOLUTION_GLOBAL_APIKEY;
 
     try {
         await axios.post(
             `${apiUrl}/message/sendText/${instanceName}`,
-            {
-                number: remoteJid,
-                text: text
-            },
+            { number: remoteJid, text },
             {
                 headers: {
-                    'apikey': globalApiKey,
-                    'Content-Type': 'application/json'
-                }
+                    'apikey': apiKey,
+                    'Content-Type': 'application/json',
+                },
+                timeout: 15000,
             }
         );
     } catch (error) {
-        console.error(`[Evolution Error - ${clientId}]`, error.message);
+        console.error(`[Evolution sendMessage - ${clientId}] ${error.message}`);
         throw error;
     }
 }
 
-async function getMediaBase64(clientId, messageObj) {
+/**
+ * Obtém o base64 de uma mensagem de mídia via Evolution API.
+ * Usado quando o webhook não traz o base64 inline.
+ */
+async function getMediaBase64(clientId, messageObj, config = {}) {
     const apiUrl = process.env.EVOLUTION_API_URL || 'https://evolution.kairos-os.com';
-    const globalApiKey = process.env.EVOLUTION_GLOBAL_APIKEY;
-    const instanceName = process.env.INSTANCE_NAME || `${clientId}`;
+    const instanceName = config.instanceName || process.env.INSTANCE_NAME || clientId;
+    const apiKey = config.instanceApiKey || process.env.EVOLUTION_GLOBAL_APIKEY;
 
     try {
         const response = await axios.post(
@@ -40,14 +43,23 @@ async function getMediaBase64(clientId, messageObj) {
             { message: messageObj },
             {
                 headers: {
-                    'apikey': globalApiKey,
-                    'Content-Type': 'application/json'
-                }
+                    'apikey': apiKey,
+                    'Content-Type': 'application/json',
+                },
+                timeout: 30000,
             }
         );
-        return response.data.base64;
+
+        const base64 = response.data?.base64 || response.data?.data?.base64;
+        if (!base64) {
+            console.warn(`[Evolution getMediaBase64 - ${clientId}] Resposta sem base64:`, JSON.stringify(response.data).substring(0, 200));
+        }
+        return base64 || null;
     } catch (error) {
-        console.error(`[Evolution Media Error - ${clientId}]`, error.message);
+        console.error(`[Evolution getMediaBase64 - ${clientId}] ${error.message}`);
+        if (error.response) {
+            console.error(`[Evolution] Status: ${error.response.status}`, JSON.stringify(error.response.data).substring(0, 300));
+        }
         return null;
     }
 }

@@ -4,15 +4,28 @@ const fs = require('fs');
 const path = require('path');
 const { generateResponse, transcribeAudio } = require('./services/groq');
 const { sendMessage, getMediaBase64 } = require('./services/evolution');
+const { isSessionPaused, pauseSession, resumeSession, clearSession } = require('./services/redis');
 
 const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
-const BUILD_VERSION = '2.3.0';
-const BUILD_DATE = '2026-06-03T13:35:00Z';
+const BUILD_VERSION = '3.0.0';
+const BUILD_DATE = '2026-06-03T14:30:00Z';
 
-// Load client config
+// Keywords que ativam o handoff humano
+const HANDOFF_KEYWORDS = [
+    'falar com atendente',
+    'falar com humano',
+    'falar com pessoa',
+    'quero um atendente',
+    'quero um humano',
+    'atendente real',
+    'pessoa real',
+    'chamar o paulo',
+    'falar com o paulo',
+];
+
 function loadClientConfig(clientId) {
     const configPath = path.join(__dirname, 'config', 'clients', `${clientId}.json`);
     if (fs.existsSync(configPath)) {
@@ -21,139 +34,196 @@ function loadClientConfig(clientId) {
     return null;
 }
 
-// Webhook handler logic
+function detectHandoff(text) {
+    const lower = text.toLowerCase();
+    return HANDOFF_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+async function notifyAdmin(clientId, config, customerJid) {
+    if (!config.adminNumbers || config.adminNumbers.length === 0) return;
+
+    const adminJid = config.adminNumbers[0]; // notifica o primeiro admin
+    const msg = `🔔 *Handoff solicitado!*\nUm cliente quer falar com você.\n\nContato: ${customerJid}\n\nResponda ao cliente diretamente ou use:\n*retomar ${customerJid}*\npara reativar o bot nessa conversa.`;
+
+    try {
+        await sendMessage(clientId, adminJid, msg, config);
+        console.log(`[Handoff] Admin notificado: ${adminJid}`);
+    } catch (err) {
+        console.error('[Handoff] Falha ao notificar admin:', err.message);
+    }
+}
+
+// ─── Webhook Handler ───────────────────────────────────────────────────────────
 async function handleWebhook(req, res) {
     const body = req.body;
 
-    // ===== FIRST LINE OF DEFENSE: Block groups IMMEDIATELY =====
-    // Check raw body for ANY group indicator before doing anything else
+    // Bloquear grupos, status e self-messages imediatamente
     const rawJid = body?.data?.key?.remoteJid || '';
     const isGroup = rawJid.endsWith('@g.us') || rawJid.includes('@g.us');
     const isStatus = rawJid === 'status@broadcast';
     const isFromMe = body?.data?.key?.fromMe === true;
-    
+
     if (isGroup || isStatus || isFromMe) {
-        console.log(`[BLOCKED] Group/Status/Self message from ${rawJid} — ignoring`);
         return res.status(200).send('Ignored');
     }
-    // ===== END FIRST LINE OF DEFENSE =====
 
-    console.log(`[Webhook Hit] clientId: ${req.params.clientId}, jid: ${rawJid}`);
+    console.log(`[Webhook] clientId: ${req.params.clientId}, jid: ${rawJid}`);
 
     try {
         const { clientId } = req.params;
         const config = loadClientConfig(clientId);
 
         if (!config) {
-            console.error(`[Webhook] Config not found for client: ${clientId}`);
+            console.error(`[Webhook] Config não encontrada: ${clientId}`);
             return res.status(404).send('Client config not found');
         }
-        
-        // Evolution API validation
-        if (!body || !body.data || !body.data.message) {
+
+        if (!body?.data?.message) {
             return res.status(200).send('Event ignored');
         }
 
         const msgData = body.data;
         const remoteJid = msgData.key.remoteJid;
 
-        // Admin detection
+        // ── Admin detection ──────────────────────────────────────────────────
         let isAdmin = false;
         if (config.adminNumbers) {
             const remoteDigits = remoteJid.replace(/\D/g, '');
             isAdmin = config.adminNumbers.some(adminNum => {
                 const adminDigits = adminNum.replace(/\D/g, '');
-                // Compara os últimos 8 dígitos para evitar bug do 9º dígito
                 return remoteDigits.endsWith(adminDigits.slice(-8));
             });
         }
 
-        // Get message text
+        // ── Handoff: verificar pausa da sessão (não se aplica a admins) ──────
+        if (!isAdmin) {
+            const paused = await isSessionPaused(clientId, remoteJid);
+            if (paused) {
+                console.log(`[Handoff] Sessão pausada para ${remoteJid} — bot silenciado`);
+                return res.status(200).send('Session paused');
+            }
+        }
+
+        // ── Processar mensagem de Admin: comandos de retomada ────────────────
+        if (isAdmin) {
+            const rawText = msgData.message?.conversation || msgData.message?.extendedTextMessage?.text || '';
+            const retomadaMatch = rawText.match(/retomar\s+([\d@\w.]+)/i);
+            if (retomadaMatch) {
+                const targetJid = retomadaMatch[1].includes('@') ? retomadaMatch[1] : `${retomadaMatch[1]}@s.whatsapp.net`;
+                await resumeSession(clientId, targetJid);
+                await sendMessage(clientId, remoteJid, `✅ Bot reativado para: ${targetJid}`, config);
+                return res.status(200).send('OK');
+            }
+        }
+
+        // ── Extrair texto / transcrever áudio ────────────────────────────────
         const message = msgData.message;
-        let text = "";
-        
+        let text = '';
+
         if (message.conversation) {
             text = message.conversation;
         } else if (message.extendedTextMessage?.text) {
             text = message.extendedTextMessage.text;
         } else if (message.audioMessage) {
-            console.log(`[${clientId.toUpperCase()}] Áudio recebido de ${remoteJid}, iniciando transcrição...`);
-            
-            // 1. Try to get base64 directly if Evolution sent it
+            console.log(`[Audio] Recebido de ${remoteJid} — iniciando pipeline de transcrição`);
+
             let base64 = message.audioMessage.base64;
-            
-            // 2. Fallback to API if not present
+
             if (!base64) {
-                base64 = await getMediaBase64(clientId, msgData);
+                console.log('[Audio] base64 inline ausente — buscando via API Evolution...');
+                base64 = await getMediaBase64(clientId, msgData, config);
             }
-            
+
             if (!base64) {
-                // Cannot download audio — warn user directly, skip LLM
-                console.warn(`[${clientId.toUpperCase()}] Falha ao obter base64 do áudio de ${remoteJid}`);
-                await sendMessage(clientId, remoteJid, '⚠️ Não consegui baixar o seu áudio. Pode enviar uma mensagem de texto?');
+                console.warn(`[Audio] Falha ao obter base64 de ${remoteJid}`);
+                await sendMessage(clientId, remoteJid, '⚠️ Não consegui baixar o áudio. Pode enviar por texto?', config);
                 return res.status(200).send('Audio download failed');
             }
 
             const transcript = await transcribeAudio(base64);
+
             if (!transcript) {
-                // Transcription failed — warn user directly, skip LLM
-                console.warn(`[${clientId.toUpperCase()}] Falha na transcrição do áudio de ${remoteJid}`);
-                await sendMessage(clientId, remoteJid, '⚠️ Não consegui entender o áudio. Pode tentar novamente ou enviar por texto?');
+                console.warn(`[Audio] Falha na transcrição de ${remoteJid}`);
+                await sendMessage(clientId, remoteJid, '⚠️ Não entendi o áudio. Pode tentar novamente ou enviar por texto?', config);
                 return res.status(200).send('Transcription failed');
             }
 
             text = transcript;
-            console.log(`[${clientId.toUpperCase()}] Transcrição: ${transcript}`);
+            console.log(`[Audio] Transcrição: "${transcript}"`);
         } else if (message.imageMessage || message.videoMessage || message.documentMessage) {
-            text = "[MÍDIA IGNORADA]";
+            text = '[MÍDIA IGNORADA]';
         }
 
         if (!text) {
             return res.status(200).send('No text');
         }
 
-        console.log(`[${clientId.toUpperCase()}] Mensagem recebida de ${remoteJid} (Admin: ${isAdmin}): ${text}`);
+        console.log(`[${clientId.toUpperCase()}] De ${remoteJid} (Admin: ${isAdmin}): ${text}`);
 
-        // Generate response via Groq
+        // ── Detectar handoff ANTES de enviar para o LLM ──────────────────────
+        if (!isAdmin && detectHandoff(text)) {
+            console.log(`[Handoff] Keyword detectada de ${remoteJid}`);
+            await pauseSession(clientId, remoteJid);
+            await notifyAdmin(clientId, config, remoteJid);
+            await sendMessage(
+                clientId,
+                remoteJid,
+                '👤 Vou chamar o atendente humano agora. Aguarde um momento!',
+                config
+            );
+            return res.status(200).send('Handoff triggered');
+        }
+
+        // ── Gerar resposta via LLM ───────────────────────────────────────────
         const responseObj = await generateResponse(clientId, config, remoteJid, text, isAdmin);
         const replyText = typeof responseObj === 'string' ? responseObj : responseObj?.text;
         const greetingToSend = typeof responseObj === 'string' ? null : responseObj?.greeting;
 
-        // Send greeting first if present (first interaction)
+        // Enviar saudação inicial se for primeira interação
         if (greetingToSend) {
-            await sendMessage(clientId, remoteJid, greetingToSend);
+            await sendMessage(clientId, remoteJid, greetingToSend, config);
             console.log(`[${clientId.toUpperCase()}] Greeting enviado para ${remoteJid}`);
-            // Add a small delay to make it natural
             await new Promise(resolve => setTimeout(resolve, 1500));
         }
 
-        // Send main response via Evolution
         if (replyText) {
-            await sendMessage(clientId, remoteJid, replyText);
+            await sendMessage(clientId, remoteJid, replyText, config);
             console.log(`[${clientId.toUpperCase()}] Resposta enviada para ${remoteJid}`);
         }
 
         res.status(200).send('OK');
     } catch (error) {
-        console.error('[Webhook] Error processing request:', error);
+        console.error('[Webhook] Erro crítico:', error.message, error.stack);
         res.status(500).send('Internal Server Error');
     }
 }
 
-// Multi-tenant webhook endpoints
+// ─── Rotas ─────────────────────────────────────────────────────────────────────
 app.post('/api/webhook/:clientId', handleWebhook);
 app.post('/api/webhook/:clientId/:event', handleWebhook);
 
-// Health check
-app.get('/health', (req, res) => {
-    res.status(200).send('OK');
+// Admin: forçar retomada via HTTP (alternativa ao comando WhatsApp)
+app.post('/api/admin/:clientId/resume/:jid', async (req, res) => {
+    const { clientId, jid } = req.params;
+    const decodedJid = decodeURIComponent(jid);
+    await resumeSession(clientId, decodedJid);
+    console.log(`[Admin API] Sessão retomada: ${clientId} / ${decodedJid}`);
+    res.status(200).json({ ok: true, message: `Sessão retomada para ${decodedJid}` });
 });
 
-// Version check — verify which code is actually running
-app.get('/version', (req, res) => {
-    res.json({ version: BUILD_VERSION, buildDate: BUILD_DATE, status: 'running' });
+// Admin: limpar sessão (forçar reinício de conversa)
+app.post('/api/admin/:clientId/clear/:jid', async (req, res) => {
+    const { clientId, jid } = req.params;
+    const decodedJid = decodeURIComponent(jid);
+    await clearSession(clientId, decodedJid);
+    await resumeSession(clientId, decodedJid);
+    console.log(`[Admin API] Sessão limpa: ${clientId} / ${decodedJid}`);
+    res.status(200).json({ ok: true, message: `Sessão limpa para ${decodedJid}` });
 });
+
+app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/version', (req, res) => res.json({ version: BUILD_VERSION, buildDate: BUILD_DATE, status: 'running' }));
 
 app.listen(PORT, () => {
-    console.log(`🚀 KAIROS Commercial Bots running on port ${PORT}`);
+    console.log(`🚀 KAIROS Commercial Bots v${BUILD_VERSION} running on port ${PORT}`);
 });

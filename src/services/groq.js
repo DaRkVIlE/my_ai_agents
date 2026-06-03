@@ -2,14 +2,10 @@ const Groq = require('groq-sdk');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { chat } = require('./llm');
+const { getSession, setSession } = require('./redis');
 
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY
-});
-
-// In-memory conversation history
-// Schema: { [clientId]: { [remoteJid]: [ {role, content} ] } }
-const memory = {};
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 function getAttendantPrompt(config) {
     return `Você é o assistente virtual do negócio: ${config.name}.
@@ -28,109 +24,127 @@ DIRETRIZES IMPORTANTES:
 
 async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false) {
     const lowerMsg = userMessage.toLowerCase();
-    
-    // Command interception for persona switching (only for admins/demos)
+
+    // Command interception for persona switching (only for admins)
     if (isAdmin) {
         if (/(modo atendente|modo cliente)/.test(lowerMsg)) {
-            if (!memory[clientId]) memory[clientId] = {};
-            memory[clientId][remoteJid] = [{ role: 'system', content: getAttendantPrompt(config) }];
-            
-            // Pre-inject the greeting to simulate that it was already sent, so the LLM has context
+            const systemPrompt = getAttendantPrompt(config);
+            const msgs = [{ role: 'system', content: systemPrompt }];
+
             if (config.attendant?.greeting) {
-                const now = new Date();
-                const hour = now.getHours();
-                let period = 'Bom dia';
-                if (hour >= 12 && hour < 18) period = 'Boa tarde';
-                else if (hour >= 18) period = 'Boa noite';
-                const greeting = config.attendant.greeting.replace(/bom dia|boa tarde|boa noite/i, period);
-                memory[clientId][remoteJid].push({ role: 'assistant', content: greeting });
+                const greeting = applyTimeGreeting(config.attendant.greeting);
+                msgs.push({ role: 'assistant', content: greeting });
             }
-            
-            return { text: "🔄 Modo alterado para: *ATENDENTE (Cliente)*. Como posso ajudá-lo hoje?", greeting: null };
+
+            await setSession(clientId, remoteJid, msgs);
+            return { text: '🔄 Modo alterado para: *ATENDENTE (Cliente)*. Como posso ajudá-lo hoje?', greeting: null };
         }
 
         if (/(modo funcion[áa]rio|modo assistente|modo admin)/.test(lowerMsg)) {
-            if (!memory[clientId]) memory[clientId] = {};
-            const prompt = config.adminPrompt || "Você é o assistente interno do negócio. Responda de forma direta e prestativa.";
-            memory[clientId][remoteJid] = [{ role: 'system', content: prompt }];
-            return { text: "🔄 Modo alterado para: *FUNCIONÁRIO (Admin)*. O que manda, chefe?", greeting: null };
+            const prompt = config.adminPrompt || 'Você é o assistente interno do negócio. Responda de forma direta e prestativa.';
+            await setSession(clientId, remoteJid, [{ role: 'system', content: prompt }]);
+            return { text: '🔄 Modo alterado para: *FUNCIONÁRIO (Admin)*. O que manda, chefe?', greeting: null };
         }
     }
 
-    if (!memory[clientId]) memory[clientId] = {};
-    
+    // Load or initialize session from Redis
+    let chatHistory = await getSession(clientId, remoteJid);
     let greetingToSend = null;
-    if (!memory[clientId][remoteJid]) {
-        // Initialize memory with system prompt based on config
-        const systemPrompt = (isAdmin && config.adminPrompt) ? config.adminPrompt : getAttendantPrompt(config);
-        memory[clientId][remoteJid] = [{ role: 'system', content: systemPrompt }];
 
-        // Pre-inject the greeting as an already-sent assistant message.
-        // This prevents the LLM from being instructed to "always greet first",
-        // which causes it to ignore the actual content (e.g. a transcribed audio).
+    if (!chatHistory) {
+        // Nova sessão
+        const systemPrompt = (isAdmin && config.adminPrompt) ? config.adminPrompt : getAttendantPrompt(config);
+        chatHistory = [{ role: 'system', content: systemPrompt }];
+
+        // Pre-inject greeting as already-sent message so LLM doesn't repeat it
         if (!isAdmin && config.attendant?.greeting) {
-            const now = new Date();
-            const hour = now.getHours();
-            let period = 'Bom dia';
-            if (hour >= 12 && hour < 18) period = 'Boa tarde';
-            else if (hour >= 18) period = 'Boa noite';
-            const greeting = config.attendant.greeting.replace(/bom dia|boa tarde|boa noite/i, period);
-            memory[clientId][remoteJid].push({ role: 'assistant', content: greeting });
-            greetingToSend = greeting; // will be sent before processing user message
+            const greeting = applyTimeGreeting(config.attendant.greeting);
+            chatHistory.push({ role: 'assistant', content: greeting });
+            greetingToSend = greeting;
         }
     }
 
-    const chatHistory = memory[clientId][remoteJid];
     chatHistory.push({ role: 'user', content: userMessage });
 
-    // Keep history bounded to avoid token limit
-    if (chatHistory.length > 20) {
-        // Keep system prompt (index 0) and remove oldest messages
+    // Keep history bounded (max 20 messages + system prompt)
+    if (chatHistory.length > 22) {
         chatHistory.splice(1, 2);
     }
 
     try {
-        const completion = await groq.chat.completions.create({
-            messages: chatHistory,
-            model: "llama-3.3-70b-versatile",
-            temperature: 0.5,
-            max_tokens: 300
-        });
-
-        const reply = completion.choices[0].message.content;
+        const reply = await chat(chatHistory);
         chatHistory.push({ role: 'assistant', content: reply });
+
+        // Persist updated session
+        await setSession(clientId, remoteJid, chatHistory);
 
         return { text: reply, greeting: greetingToSend };
     } catch (error) {
-        console.error(`[Groq Error - ${clientId}]`, error.message);
-        return { text: "Desculpe, estou com uma instabilidade no momento. Posso ajudar em breve.", greeting: null };
+        console.error(`[generateResponse - ${clientId}]`, error.message);
+        return { text: 'Desculpe, estou com uma instabilidade no momento. Pode tentar em breve?', greeting: null };
     }
 }
 
+function applyTimeGreeting(greeting) {
+    const hour = new Date().getHours();
+    let period = 'Bom dia';
+    if (hour >= 12 && hour < 18) period = 'Boa tarde';
+    else if (hour >= 18) period = 'Boa noite';
+    return greeting.replace(/bom dia|boa tarde|boa noite/gi, period);
+}
 
 async function transcribeAudio(base64Audio) {
-    if (!base64Audio) return null;
+    if (!base64Audio) {
+        console.warn('[Whisper] base64Audio é null/undefined — abortando transcrição');
+        return null;
+    }
+
+    // DEBUG: log do prefixo para diagnóstico
+    const preview = base64Audio.substring(0, 120);
+    console.log(`[Whisper] base64 preview: ${preview}`);
+    console.log(`[Whisper] Tamanho do base64: ${base64Audio.length} chars`);
+
     try {
-        // Garante a extração limpa do base64 independente do prefixo (ex: data:audio/ogg; codecs=opus;base64,)
-        const base64Data = base64Audio.includes('base64,') ? base64Audio.split('base64,')[1] : base64Audio;
+        // Split seguro — cobre qualquer variante do prefixo (ogg, ogg;codecs=opus, mp4, etc)
+        const base64Data = base64Audio.includes('base64,')
+            ? base64Audio.split('base64,')[1]
+            : base64Audio;
+
         const buffer = Buffer.from(base64Data, 'base64');
-        
-        // Save to temporary file
-        const tempFilePath = path.join(os.tmpdir(), `audio_${Date.now()}.ogg`);
+        console.log(`[Whisper] Buffer gerado: ${buffer.length} bytes`);
+
+        if (buffer.length < 1000) {
+            console.warn('[Whisper] Buffer muito pequeno — possível base64 corrompido');
+            return null;
+        }
+
+        // Detecta extensão pelo prefixo MIME
+        let ext = 'ogg';
+        if (base64Audio.includes('audio/mp4')) ext = 'mp4';
+        else if (base64Audio.includes('audio/mpeg')) ext = 'mp3';
+        else if (base64Audio.includes('audio/wav')) ext = 'wav';
+
+        const tempFilePath = path.join(os.tmpdir(), `audio_${Date.now()}.${ext}`);
         fs.writeFileSync(tempFilePath, buffer);
-        
+
+        console.log(`[Whisper] Enviando para transcrição: ${tempFilePath} (${ext})`);
+
         const transcription = await groq.audio.transcriptions.create({
             file: fs.createReadStream(tempFilePath),
-            model: "whisper-large-v3",
-            language: "pt"
+            model: 'whisper-large-v3',
+            language: 'pt',
         });
-        
-        // Cleanup temp file
+
         fs.unlinkSync(tempFilePath);
-        
+
+        console.log(`[Whisper] Transcrição concluída: "${transcription.text}"`);
         return transcription.text;
     } catch (error) {
-        console.error("[Groq Audio Error]", error.message);
+        console.error('[Whisper] Erro na transcrição:', error.message);
+        if (error.response) {
+            console.error('[Whisper] Response status:', error.response.status);
+            console.error('[Whisper] Response data:', JSON.stringify(error.response.data));
+        }
         return null;
     }
 }
