@@ -7,12 +7,67 @@ const { getSession, setSession } = require('./redis');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+// ── NOTIFICAÇÃO DE RESERVA ───────────────────────────────────────────────────────────────
+async function sendReservationNotification(config, reservaData, clienteJid) {
+    if (!config.notificacao_reserva?.ativo || !config.notificacao_reserva?.numero_gerencia) return;
+    if (!config.instanceName || !config.instanceApiKey) return;
+
+    const evolutionUrl = process.env.EVOLUTION_API_URL || 'https://evolution-api-production-9afd.up.railway.app';
+    const { nome, data, horario, pessoas, ocasiao } = reservaData;
+
+    const agora = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const clienteNumero = clienteJid.replace('@s.whatsapp.net', '').replace('@g.us', '');
+
+    const mensagem =
+        `📍 *NOVA SOLICITACAO DE RESERVA*\n` +
+        `────────────────────\n` +
+        `👤 *Nome:* ${nome || 'Não informado'}\n` +
+        `📅 *Data:* ${data || 'Não informada'}\n` +
+        `🕐 *Horário:* ${horario || 'Não informado'}\n` +
+        `👥 *Pessoas:* ${pessoas || 'Não informado'}\n` +
+        (ocasiao && ocasiao !== 'nenhuma' ? `🎉 *Ocasião:* ${ocasiao}\n` : '') +
+        `────────────────────\n` +
+        `📲 *WhatsApp cliente:* ${clienteNumero}\n` +
+        `⏰ *Recebido em:* ${agora}\n\n` +
+        `_Responda diretamente a esse número para confirmar a reserva._`;
+
+    try {
+        const response = await fetch(
+            `${evolutionUrl}/message/sendText/${config.instanceName}`,
+            {
+                method: 'POST',
+                headers: {
+                    'apikey': config.instanceApiKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    number: config.notificacao_reserva.numero_gerencia,
+                    text: mensagem
+                })
+            }
+        );
+        if (response.ok) {
+            console.log(`[Reserva] ✅ Notificação enviada para a gerência: ${nome} | ${data} | ${horario} | ${pessoas}px`);
+        } else {
+            const err = await response.text();
+            console.error(`[Reserva] ❌ Falha ao notificar gerência: ${err}`);
+        }
+    } catch (e) {
+        console.error('[Reserva] ❌ Erro na requisição de notificação:', e.message);
+    }
+}
+
 function getAttendantPrompt(config) {
     // Extrai apenas as chaves de conhecimento de negócio (exclui credenciais e metadados de sistema)
     const {
         name, tone, services, targetAudience, attendant, instanceName, instanceApiKey,
-        testMode, testAllowedNumbers, adminNumbers, adminPrompt, examples, ...businessRules
+        testMode, testAllowedNumbers, adminNumbers, adminPrompt, examples, notificacao_reserva, ...businessRules
     } = config;
+
+    // Injeta a instrução do marcador de reserva se o sistema estiver ativo
+    const reservaInstruction = notificacao_reserva?.ativo && notificacao_reserva?.instrucao_llm
+        ? `\n7. ${notificacao_reserva.instrucao_llm}`
+        : '';
 
     return `Você é o assistente virtual do negócio: ${config.name}.
 Tom de voz: ${config.tone}.
@@ -30,7 +85,7 @@ ${JSON.stringify(config.examples || config.attendant?.examples || [], null, 2)}
 3. A saudação inicial JÁ FOI ENVIADA para o cliente. Portanto, NUNCA inicie suas respostas com saudações (ex: "Olá", "Boa tarde", "Seja bem vindo").
 4. Vá direto ao ponto e responda DIRETAMENTE à pergunta ou comentário do usuário.
 5. Se o usuário mandar um áudio (aparecerá como [ÁUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.
-6. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.`;
+6. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.${reservaInstruction}`;
 }
 
 async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false, imageBase64 = null) {
@@ -96,7 +151,25 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
 
     try {
         // Envia para o LLM
-        const reply = await chat(chatHistory);
+        let reply = await chat(chatHistory);
+
+        // ── DETECÇÃO DE RESERVA COMPLETA ──────────────────────────────────────────────
+        const reservaMatch = reply.match(/\[RESERVA:\s*([^\]]+)\]/i);
+        if (reservaMatch) {
+            // Extrai os campos do marcador
+            const campos = {};
+            reservaMatch[1].split('|').forEach(par => {
+                const [chave, ...valor] = par.split('=');
+                if (chave) campos[chave.trim().toLowerCase()] = valor.join('=').trim();
+            });
+            // Remove o marcador da mensagem que o cliente vai ver
+            reply = reply.replace(reservaMatch[0], '').trim();
+            // Dispara notificação para a gerência (assíncrono, não bloqueia resposta)
+            sendReservationNotification(config, campos, remoteJid).catch(e =>
+                console.error('[Reserva] Erro não tratado na notificação:', e.message)
+            );
+        }
+
         chatHistory.push({ role: 'assistant', content: reply });
 
         // Sanitização de Memória: Remover o base64 gigante do histórico antes de salvar no Redis

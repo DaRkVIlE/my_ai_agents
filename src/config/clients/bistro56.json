@@ -4,15 +4,21 @@
   "targetAudience": "Público sofisticado e exigente. Muitos clientes possuem preferências gastronômicas muito específicas, restrições alimentares ou rituais próprios. Trate cada pedido personalizado com naturalidade total — isso é o diferencial da casa, não uma exceção.",
 
   "contato": {
-    "endereco": "Rua Duque de Caxias, 56 — Centro, Bragança Paulista/SP",
-    "instagram": "@bistro56oficial",
-    "telefone": "(11) 4572-5656",
+    "endereco": "Rua Bolívia, 250 — Mauá/SP",
+    "instagram": "@56bistro",
+    "telefone": "(11) 4546-7054 (WhatsApp)",
     "pix": {
       "tipo": "CNPJ",
       "chave": "Solicitar ao atendente humano — nunca divulgar no WhatsApp",
       "instrucao_bot": "Quando solicitado o PIX, informe: 'Para pagamentos via Pix, nossa equipe te envia os dados no momento da confirmação. Preferimos garantir a segurança das suas informações! 🔒'"
     },
-    "mapa": "https://maps.google.com/?q=Bistr%C3%B4+56+Bragan%C3%A7a+Paulista"
+    "mapa": "https://maps.google.com/?q=Bistr%C3%B4+56+Mau%C3%A1+SP"
+  },
+
+  "notificacao_reserva": {
+    "ativo": true,
+    "numero_gerencia": "5511974375794",
+    "instrucao_llm": "Quando você tiver coletado TODOS os dados obrigatórios de reserva (nome, data, horário e quantidade de pessoas), inclua ao FINAL da sua mensagem o marcador: [RESERVA: nome=X|data=X|horario=X|pessoas=X|ocasiao=X]. Substitua X pelos dados reais. O marcador será removido antes de chegar ao cliente. Nunca inclua esse marcador antes de ter todos os dados."
   },
 
   "attendant": {
