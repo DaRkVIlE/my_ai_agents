@@ -3,7 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { chat } = require('./llm');
-const { getSession, setSession } = require('./redis');
+const { getSession, setSession, getDynamicRules, setDynamicRules, clearDynamicRules } = require('./redis');
+
+const MAX_DYNAMIC_RULES = 10;
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -57,7 +59,64 @@ async function sendReservationNotification(config, reservaData, clienteJid) {
     }
 }
 
-function getAttendantPrompt(config) {
+// ── REGRAS DINÂMICAS — Interceptação de comandos admin ───────────────────────
+async function handleDynamicRuleCommand(clientId, userMessage) {
+    const msg = userMessage.trim();
+
+    // [REGRA] texto — adicionar nova regra
+    const addMatch = msg.match(/^\[REGRA\]\s*(.+)/is);
+    if (addMatch) {
+        const novaRegra = addMatch[1].trim();
+        if (!novaRegra) {
+            return '⚠️ Formato: [REGRA] seguido da instrução.\nExemplo: [REGRA] 86 no salmão';
+        }
+        const rules = await getDynamicRules(clientId);
+        if (rules.length >= MAX_DYNAMIC_RULES) {
+            return `⚠️ Limite de ${MAX_DYNAMIC_RULES} regras atingido.\nUse [LIMPAR REGRAS] para resetar ou [REMOVER REGRA] {número} para liberar espaço.`;
+        }
+        rules.push(novaRegra);
+        await setDynamicRules(clientId, rules);
+        const lista = rules.map((r, i) => `${i + 1}. ${r}`).join('\n');
+        return `✅ Regra aplicada com sucesso!\n\n📋 *Regras ativas agora:*\n${lista}\n\n⏰ Expira automaticamente em ~18h.\nPara listar: [REGRAS]\nPara limpar tudo: [LIMPAR REGRAS]`;
+    }
+
+    // [LIMPAR REGRAS] — remover todas
+    if (/^\[LIMPAR REGRAS\]/i.test(msg)) {
+        await clearDynamicRules(clientId);
+        return '✅ Todas as regras dinâmicas foram removidas.\nO bot voltou ao comportamento padrão.';
+    }
+
+    // [REMOVER REGRA] número — remover específica
+    const removeMatch = msg.match(/^\[REMOVER REGRA\]\s*(\d+)/i);
+    if (removeMatch) {
+        const idx = parseInt(removeMatch[1], 10) - 1;
+        const rules = await getDynamicRules(clientId);
+        if (idx < 0 || idx >= rules.length) {
+            return `⚠️ Número inválido. Use [REGRAS] para ver a lista (1 a ${rules.length}).`;
+        }
+        const removida = rules.splice(idx, 1)[0];
+        await setDynamicRules(clientId, rules);
+        const lista = rules.length > 0
+            ? rules.map((r, i) => `${i + 1}. ${r}`).join('\n')
+            : 'Nenhuma regra ativa.';
+        return `✅ Regra removida: "${removida}"\n\n📋 *Regras ativas:*\n${lista}`;
+    }
+
+    // [REGRAS] — listar ativas
+    if (/^\[REGRAS\]$/i.test(msg)) {
+        const rules = await getDynamicRules(clientId);
+        if (rules.length === 0) {
+            return '📋 Nenhuma regra dinâmica ativa no momento.\nO bot está operando com as configurações padrão.';
+        }
+        const lista = rules.map((r, i) => `${i + 1}. ${r}`).join('\n');
+        return `📋 *Regras ativas (${rules.length}/${MAX_DYNAMIC_RULES}):*\n${lista}\n\n⏰ Expira automaticamente em ~18h.`;
+    }
+
+    // Não é um comando de regra dinâmica
+    return null;
+}
+
+function getAttendantPrompt(config, dynamicRules = []) {
     // Extrai apenas as chaves de conhecimento de negócio (exclui credenciais e metadados de sistema)
     const {
         name, tone, services, targetAudience, attendant, instanceName, instanceApiKey,
@@ -67,6 +126,11 @@ function getAttendantPrompt(config) {
     // Injeta a instrução do marcador de reserva se o sistema estiver ativo
     const reservaInstruction = notificacao_reserva?.ativo && notificacao_reserva?.instrucao_llm
         ? `\n7. ${notificacao_reserva.instrucao_llm}`
+        : '';
+
+    // Injeta regras dinâmicas da gerência (se houver)
+    const dynamicBlock = dynamicRules.length > 0
+        ? `\n\n⚠️ ATUALIZAÇÕES TEMPORÁRIAS DA GERÊNCIA (OBEDEÇA RIGOROSAMENTE):\n${dynamicRules.map(r => `- ${r}`).join('\n')}\nEstas instruções têm PRIORIDADE sobre o cardápio e regras padrão acima.`
         : '';
 
     return `Você é o assistente virtual do negócio: ${config.name}.
@@ -85,16 +149,26 @@ ${JSON.stringify(config.examples || config.attendant?.examples || [], null, 2)}
 3. A saudação inicial JÁ FOI ENVIADA para o cliente. Portanto, NUNCA inicie suas respostas com saudações (ex: "Olá", "Boa tarde", "Seja bem vindo").
 4. Vá direto ao ponto e responda DIRETAMENTE à pergunta ou comentário do usuário.
 5. Se o usuário mandar um áudio (aparecerá como [ÁUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.
-6. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.${reservaInstruction}`;
+6. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.${reservaInstruction}${dynamicBlock}`;
 }
 
 async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false, imageBase64 = null) {
     const lowerMsg = userMessage.toLowerCase();
 
+    // ── INTERCEPTAÇÃO DE REGRAS DINÂMICAS (Admin only, antes de tudo) ─────
+    if (isAdmin) {
+        const ruleResponse = await handleDynamicRuleCommand(clientId, userMessage);
+        if (ruleResponse) {
+            console.log(`[Regras Dinâmicas] Comando processado de admin: ${userMessage.substring(0, 50)}`);
+            return { text: ruleResponse, greeting: null };
+        }
+    }
+
     // Command interception for persona switching (only for admins)
     if (isAdmin) {
         if (/(modo atendente|modo cliente)/.test(lowerMsg)) {
-            const systemPrompt = getAttendantPrompt(config);
+            const dynamicRules = await getDynamicRules(clientId);
+            const systemPrompt = getAttendantPrompt(config, dynamicRules);
             const msgs = [{ role: 'system', content: systemPrompt }];
 
             if (config.attendant?.greeting) {
@@ -113,13 +187,16 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
         }
     }
 
+    // ── Carregar regras dinâmicas para injeção no prompt ──────────────────
+    const dynamicRules = await getDynamicRules(clientId);
+
     // Load or initialize session from Redis
     let chatHistory = await getSession(clientId, remoteJid);
     let greetingToSend = null;
 
     if (!chatHistory) {
         // Nova sessão
-        const systemPrompt = (isAdmin && config.adminPrompt) ? config.adminPrompt : getAttendantPrompt(config);
+        const systemPrompt = (isAdmin && config.adminPrompt) ? config.adminPrompt : getAttendantPrompt(config, dynamicRules);
         chatHistory = [{ role: 'system', content: systemPrompt }];
 
         // Pre-inject greeting as already-sent message so LLM doesn't repeat it
@@ -128,6 +205,9 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
             chatHistory.push({ role: 'assistant', content: greeting });
             greetingToSend = greeting;
         }
+    } else if (!isAdmin && dynamicRules.length > 0) {
+        // Sessão existente — rebuild do system prompt com regras dinâmicas atualizadas
+        chatHistory[0] = { role: 'system', content: getAttendantPrompt(config, dynamicRules) };
     }
 
     // Preparar conteúdo do usuário (suporte a Visão)
