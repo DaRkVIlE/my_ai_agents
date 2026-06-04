@@ -9,8 +9,14 @@
 
   "instanceName": "Bistrô56",
   "instanceApiKey": "ABFC809E489D-400E-BD28-471EA2719B90",
+  "testMode": true,
+  "testAllowedNumbers": [
+    "5511974375794",
+    "5511977010955"
+  ],
   "adminNumbers": [
-    "551145467054@s.whatsapp.net"
+    "5511974375794@s.whatsapp.net",
+    "5511977010955@s.whatsapp.net"
   ],
   "adminPrompt": "Você é o assistente interno do Bistrô 56. Responda apenas ao gestor ou dono autorizado. Ajude com: resumo de reservas pendentes, rascunhos de mensagens para clientes, sugestões de cardápio ou qualquer operação interna. Seja direto e eficiente.",
 

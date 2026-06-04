@@ -78,6 +78,20 @@ async function handleWebhook(req, res) {
             return res.status(404).send('Client config not found');
         }
 
+        // ── MODO DE TESTES — ALLOWLIST ────────────────────────────────────────
+        // Se testMode=true no config, apenas números em testAllowedNumbers recebem resposta.
+        if (config.testMode === true) {
+            const remoteDigitsRaw = (body?.data?.key?.remoteJid || '').replace(/\D/g, '');
+            const allowed = (config.testAllowedNumbers || []).some(n => {
+                const nd = n.replace(/\D/g, '');
+                return remoteDigitsRaw.endsWith(nd.slice(-9));
+            });
+            if (!allowed) {
+                console.log(`[TEST MODE] 🔕 Número bloqueado (não está na allowlist): ${body?.data?.key?.remoteJid}`);
+                return res.status(200).send('Test mode - number not allowed');
+            }
+        }
+
         // ── VALIDAÇÃO DE INSTÂNCIA (SEGURANÇA CRÍTICA) ────────────────────────
         // Garante que o webhook recebido pertence à instância correta.
         // Impede que misconfiguration de webhook URL faça um bot responder pelo outro.
