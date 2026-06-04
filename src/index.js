@@ -78,6 +78,23 @@ async function handleWebhook(req, res) {
             return res.status(404).send('Client config not found');
         }
 
+        // ── VALIDAÇÃO DE INSTÂNCIA (SEGURANÇA CRÍTICA) ────────────────────────
+        // Garante que o webhook recebido pertence à instância correta.
+        // Impede que misconfiguration de webhook URL faça um bot responder pelo outro.
+        const instanceFromPayload = body?.instance || body?.data?.instance || body?.instanceName;
+        if (instanceFromPayload && config.instanceName) {
+            const normalizeInstance = (s) => s.toLowerCase().replace(/[\s_-]/g, '');
+            if (normalizeInstance(instanceFromPayload) !== normalizeInstance(config.instanceName)) {
+                console.error(
+                    `[SECURITY] ⛔ MISMATCH DE INSTÂNCIA DETECTADO!\n` +
+                    `  Rota recebida: /api/webhook/${clientId} (config: "${config.instanceName}")\n` +
+                    `  Instância no payload: "${instanceFromPayload}"\n` +
+                    `  → Webhook BLOQUEADO. Corrija a URL do webhook na Evolution API para a instância "${instanceFromPayload}".`
+                );
+                return res.status(200).send('Instance mismatch - blocked');
+            }
+        }
+
         if (!body?.data?.message) {
             return res.status(200).send('Event ignored');
         }
