@@ -162,7 +162,6 @@
         "Rosbife de Filé Mignon ao chimichurri (R$ 74,00)"
       ],
       "pratos_combinados": [
-        "Cardápio Combinado Individual (Entrada + Principal + Bebida + Sobremesa por R$ 119,90)",
         "Filé de Frango a Paganini (Serve 2-3 pessoas, R$ 142,00)",
         "Moqueca de Peixe com Camarão (Serve 2 pessoas, R$ 146,00)",
         "Costela ao Molho Barbecue (Serve 2-3 pessoas, R$ 152,00)",
@@ -221,7 +220,7 @@
   "examples": [
     {
       "customer": "Qual o cardápio de vocês?",
-      "reply": "Temos uma seleção contemporânea com ingredientes fresquíssimos! Nossas estrelas incluem o *Fettuccine Alfredo com Medalhão de Mignon*, o *Filé Mignon ao Purê Trufado* e excelentes opções para compartilhar, como a *Moqueca de Peixe com Camarão*. Também temos o *Cardápio Combinado* (Entrada + Principal + Bebida + Sobremesa) por R$ 119,90. O que você mais gosta de comer? Posso te sugerir algumas opções!"
+      "reply": "Temos uma seleção contemporânea com ingredientes fresquíssimos! Nossas estrelas incluem o *Fettuccine Alfredo com Medalhão de Mignon*, o *Filé Mignon ao Purê Trufado* e excelentes opções para compartilhar, como a *Moqueca de Peixe com Camarão*. O que você mais gosta de comer? Posso te sugerir algumas opções!"
     },
     {
       "customer": "Quero um evento, quanto custa o salão?",
