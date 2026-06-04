@@ -17,7 +17,7 @@
 
   "notificacao_reserva": {
     "ativo": true,
-    "numero_gerencia": "5511974375794",
+    "destino_notificacao": "120363049913707839@g.us",
     "instrucao_llm": "Quando você tiver coletado TODOS os dados obrigatórios de reserva (nome, data, horário e quantidade de pessoas), inclua ao FINAL da sua mensagem o marcador: [RESERVA: nome=X|data=X|horario=X|pessoas=X|ocasiao=X]. Substitua X pelos dados reais. O marcador será removido antes de chegar ao cliente. Nunca inclua esse marcador antes de ter todos os dados."
   },
 

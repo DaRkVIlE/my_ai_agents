@@ -9,7 +9,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // ── NOTIFICAÇÃO DE RESERVA ───────────────────────────────────────────────────────────────
 async function sendReservationNotification(config, reservaData, clienteJid) {
-    if (!config.notificacao_reserva?.ativo || !config.notificacao_reserva?.numero_gerencia) return;
+    if (!config.notificacao_reserva?.ativo || !config.notificacao_reserva?.destino_notificacao) return;
     if (!config.instanceName || !config.instanceApiKey) return;
 
     const evolutionUrl = process.env.EVOLUTION_API_URL || 'https://evolution-api-production-9afd.up.railway.app';
@@ -41,7 +41,7 @@ async function sendReservationNotification(config, reservaData, clienteJid) {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    number: config.notificacao_reserva.numero_gerencia,
+                    number: config.notificacao_reserva.destino_notificacao,
                     text: mensagem
                 })
             }
