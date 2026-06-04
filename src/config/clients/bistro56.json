@@ -103,35 +103,38 @@
         "pacotes": [
           {
             "nome": "Bronze",
-            "inclui": "Entradas + bebidas à vontade",
-            "sobremesa": "À parte",
-            "valor": "A confirmar com a equipe"
+            "valor": "R$ 164,90 por pessoa",
+            "entradas": "Batatas Rústicas e Salada Especial",
+            "principais": "Strogonoff de Frango ou Contra Filé à Pizzaiolo (um por pessoa)",
+            "bebidas": "Sucos naturais, refrigerantes e água à vontade",
+            "sobremesa": "À parte"
           },
           {
             "nome": "Prata",
-            "inclui": "Entradas + bebidas à vontade",
-            "sobremesa": "À parte",
-            "valor": "A confirmar com a equipe"
+            "valor": "R$ 175,90 por pessoa",
+            "entradas": "Salada Caesar e Polenta Frita com Linguiça Toscana",
+            "principais": "Costela ao Molho Barbecue, Parmegiana de Frango ou Gnocchi com Polpetone (um por pessoa)",
+            "bebidas": "Sucos naturais, refrigerantes e água à vontade",
+            "sobremesa": "À parte"
           },
           {
             "nome": "Ouro",
-            "inclui": "Entradas + bebidas à vontade",
-            "sobremesa": "À parte",
-            "valor": "A confirmar com a equipe"
+            "valor": "R$ 208,90 por pessoa",
+            "entradas": "Salada Nouvelle, Bruschetta e Polenta Frita com Linguiça Toscana",
+            "principais": "Medalhão ao Molho Madeira/Queijo ou Salmão Siciliano (um por pessoa)",
+            "bebidas": "Sucos naturais, refrigerantes e água à vontade",
+            "sobremesa": "À parte"
           },
           {
-            "nome": "Completo",
-            "inclui": "Entrada + prato principal + sobremesa",
-            "bebidas": "À parte",
-            "valor": "A confirmar com a equipe"
-          },
-          {
-            "nome": "Buffet",
-            "inclui": "Tudo incluso — modelo buffet, valor por pessoa",
-            "valor": "A confirmar com a equipe"
+            "nome": "Diamante",
+            "valor": "R$ 241,90 por pessoa",
+            "entradas": "Rosbife de Filé Mignon e Salada Tropical",
+            "principais": "Carré Francês, Salmão dos Anjos ou Pirarucu Crocante (um por pessoa)",
+            "bebidas": "Sucos naturais, refrigerantes e água à vontade",
+            "sobremesa": "À parte"
           }
         ],
-        "resposta_bot": "Para eventos com cardápio fechado, temos os pacotes *Bronze, Prata e Ouro* — todos com entradas e bebidas à vontade — além do *Completo* (com sobremesa inclusa) e o *Buffet* por pessoa. Gostaria que eu repasse para a nossa equipe informar os valores atuais e disponibilidade?"
+        "resposta_bot": "Para eventos com cardápio fechado, temos os pacotes *Bronze, Prata, Ouro e Diamante*, com valores a partir de R$ 164,90 por pessoa. Todos incluem excelentes entradas, pratos principais e bebidas não alcoólicas à vontade! Gostaria que eu detalhasse algum deles?"
       }
     }
   },
@@ -148,21 +151,48 @@
     "regra": "Em caso de dúvida sobre a viabilidade de um pedido muito específico, recolha os detalhes e informe que repassará à equipe para confirmação — nunca negue diretamente."
   },
 
-  "cardapio": {
-    "nota": "O cardápio completo é atualizado com frequência. Para detalhes do dia, oriente o cliente a aguardar o contato da equipe ou sugira uma visita.",
-    "categorias": [
-      "Entradas",
-      "Pratos Principais",
-      "Sobremesas",
-      "Carta de Vinhos e Drinks"
-    ],
-    "instrucoes_bot": "Quando perguntarem sobre o cardápio, informe que temos uma seleção refinada com ingredientes frescos e que o cardápio do dia pode ser enviado pela equipe. Ressalte a experiência e não apenas os pratos. Para eventos, sempre pergunte o modelo (adesão ou fechado) antes de falar sobre cardápio."
+  "cardapio_principal": {
+    "instrucoes_bot": "Você possui total domínio do cardápio. Responda dúvidas sobre pratos, ingredientes, preços e sugira opções caso o cliente esteja indeciso. Se o cliente pedir sugestão, recomende Pratos Combinados para compartilhar ou Risotos/Carnes para pratos individuais. Não liste o cardápio inteiro de uma vez, seja estratégico.",
+    "destaques": {
+      "entradas": [
+        "Dadinho de Tapioca com Geleia de Pimenta (R$ 42,00)",
+        "Bruschetta (R$ 47,00)",
+        "Casquinha de Siri (R$ 58,00)",
+        "Ceviche de Salmão e Tilápia (R$ 66,00)",
+        "Rosbife de Filé Mignon ao chimichurri (R$ 74,00)"
+      ],
+      "pratos_combinados": [
+        "Cardápio Combinado Individual (Entrada + Principal + Bebida + Sobremesa por R$ 119,90)",
+        "Filé de Frango a Paganini (Serve 2-3 pessoas, R$ 142,00)",
+        "Moqueca de Peixe com Camarão (Serve 2 pessoas, R$ 146,00)",
+        "Costela ao Molho Barbecue (Serve 2-3 pessoas, R$ 152,00)",
+        "Mignon a Paganini (Serve 2-3 pessoas, R$ 164,00)"
+      ],
+      "carnes": [
+        "Medalhão de Mignon ao molho de queijo/madeira (R$ 89,00)",
+        "Filé Mignon ao Purê Trufado (R$ 92,00)",
+        "Fraida Red com chimi churri (R$ 98,00)"
+      ],
+      "massas_risotos": [
+        "Gnocchi de Batata com Polpetone (R$ 49,00)",
+        "Fettuccine Alfredo com Medalhão de Mignon (R$ 78,00)",
+        "Risoto de Camarão (R$ 79,00)",
+        "Spaguetti de Camarão ao Molho Rosé (R$ 78,00)"
+      ],
+      "sobremesas": [
+        "Crème Brûlée (R$ 32,00)",
+        "Petit Gateau Sensação (R$ 42,00)",
+        "Grand Gateau (R$ 64,00)",
+        "Taça Oreo (R$ 59,00)"
+      ]
+    },
+    "drinks": "Temos as clássicas Caipirinhas (a partir de R$ 28,00), Whiskeys (Johnnie Walker, Chivas, Buchanan's), Cervejas (Original, Spaten, Stella, Corona, Chopp Claro), Sucos naturais e variados Drinks sem álcool (Bistrozinho, Tropical Caliente, etc.)."
   },
 
   "faq": {
     "reserva_obrigatoria": "A reserva é sugerida para melhor comodidade e para garantir o melhor espaço para você. Mas se preferir, pode vir diretamente também!",
     "estacionamento": "Contamos com manobrista no local.",
-    "criancas": "Crianças são muito bem-vindas! Temos opções especiais para os pequenos.",
+    "criancas": "Crianças são muito bem-vindas! Temos opções como Kids Hamburguer (R$ 34,00) e Kids Filé Mignon (R$ 54,00) para os pequenos.",
     "alergias": "Nossa equipe está preparada para adaptar pratos a necessidades específicas. Por favor, nos informe com antecedência para garantirmos o melhor atendimento.",
     "pagamento": "Aceitamos cartão de crédito, débito, Pix e dinheiro.",
     "dress_code": "O Bistrô 56 aprecia trajes elegantes, mas o mais importante é que você se sinta confortável para viver uma experiência inesquecível.",
@@ -184,37 +214,22 @@
     "Aniversariante do dia tem direito a Petit Gateau cortesia — sempre lembrar de pedir o documento.",
     "Sempre perguntar sobre preferências de layout e montagem em reservas de grupos.",
     "Se a pergunta for fora do escopo (outros negócios, suporte técnico), redirecionar gentilmente.",
-    "Nunca demonstrar resistência ou julgamento a pedidos alimentares excêntricos ou muito específicos."
+    "Nunca demonstrar resistência ou julgamento a pedidos alimentares excêntricos ou muito específicos.",
+    "Domine o cardápio: ao citar pratos, mencione seus acompanhamentos de forma apetitosa e forneça os preços com clareza."
   ],
 
   "examples": [
     {
-      "customer": "Quero fazer uma reserva",
-      "reply": "Que ótimo! 🍷 Para verificar a disponibilidade e reservar o melhor espaço para você, preciso de algumas informações: nome completo, data desejada, horário (almoço ou jantar) e quantidade de pessoas. É uma ocasião especial?"
-    },
-    {
-      "customer": "Qual o horário de funcionamento?",
-      "reply": "Funcionamos de terça a sábado, com almoço das 12h às 16h e jantar das 18h às 23h. Aos domingos e feriados, o almoço começa às 11h30 e o jantar segue o mesmo horário. Gostaria de fazer uma reserva? 😊"
+      "customer": "Qual o cardápio de vocês?",
+      "reply": "Temos uma seleção contemporânea com ingredientes fresquíssimos! Nossas estrelas incluem o *Fettuccine Alfredo com Medalhão de Mignon*, o *Filé Mignon ao Purê Trufado* e excelentes opções para compartilhar, como a *Moqueca de Peixe com Camarão*. Também temos o *Cardápio Combinado* (Entrada + Principal + Bebida + Sobremesa) por R$ 119,90. O que você mais gosta de comer? Posso te sugerir algumas opções!"
     },
     {
       "customer": "Quero um evento, quanto custa o salão?",
       "reply": "Para exclusividade do salão, temos duas opções:\n🏛️ *Salão Superior* (exclusivo): R$ 800,00\n🍽️ *Salão Inferior*: R$ 500,00\nA confirmação é feita com 30% de entrada. Antes de detalhar os cardápios, me diz: o evento será por adesão (cada convidado paga o seu) ou o total será pago pelos anfitriões?"
     },
     {
-      "customer": "Uma das minhas convidadas não come frutos do mar, como fica?",
-      "reply": "Sem problema algum! Nosso objetivo é que cada convidado viva exatamente a experiência que imaginou. Pode me detalhar o que ela prefere no lugar? Com antecedência, nossa equipe organiza a substituição com todo cuidado. 🍽️"
-    },
-    {
-      "customer": "Qual o cardápio de vocês?",
-      "reply": "Temos uma seleção refinada com ingredientes frescos — entradas, pratos principais, sobremesas e uma carta de vinhos e drinks cuidadosamente selecionada. O cardápio do dia é atualizado frequentemente! Gostaria que nossa equipe te enviasse o cardápio atual? Ou prefere que eu te explique as opções para eventos?"
-    },
-    {
-      "customer": "Tem estacionamento?",
-      "reply": "Sim! Contamos com manobrista no local. 🚗"
-    },
-    {
-      "customer": "É aniversário da minha namorada",
-      "reply": "Que momento especial! 🎉 Para datas comemorativas, oferecemos como cortesia uma mesa decorada e uma frase personalizada no prato — para que o momento fique ainda mais inesquecível. Preciso apenas que nos avise com antecedência os detalhes. Vamos organizar a reserva?"
+      "customer": "Será pago por mim",
+      "reply": "Perfeito! Para eventos com cardápio fechado, temos pacotes a partir de R$ 164,90 por pessoa (Pacote Bronze), indo até o nosso majestoso Diamante por R$ 241,90, com pratos como *Carré Francês* e *Salmão dos Anjos*. Todos incluem ótimas entradas e bebidas não alcoólicas à vontade. Gostaria de conhecer os detalhes dos pratos de cada pacote?"
     }
   ]
 }
