@@ -35,9 +35,14 @@ function getClient() {
 }
 
 const SESSION_TTL = 60 * 60 * 24; // 24 horas
+const RULES_TTL = 60 * 60 * 18;   // 18 horas (expira de madrugada)
 
 function sessionKey(clientId, jid) {
     return `session:${clientId}:${jid}`;
+}
+
+function rulesKey(clientId) {
+    return `regras:${clientId}`;
 }
 
 function pauseKey(clientId, jid) {
@@ -146,6 +151,60 @@ async function isSessionPaused(clientId, jid) {
     }
 }
 
+// ── REGRAS DINÂMICAS (Contexto Global Admin) ─────────────────────────────────
+
+async function getDynamicRules(clientId) {
+    const redis = getClient();
+    const key = rulesKey(clientId);
+
+    if (!redis) {
+        const val = inMemoryFallback.get(key);
+        return val ? JSON.parse(val) : [];
+    }
+
+    try {
+        const val = await redis.get(key);
+        return val ? JSON.parse(val) : [];
+    } catch (err) {
+        console.error('[Redis] getDynamicRules error:', err.message);
+        return [];
+    }
+}
+
+async function setDynamicRules(clientId, rules) {
+    const redis = getClient();
+    const key = rulesKey(clientId);
+    const serialized = JSON.stringify(rules);
+
+    if (!redis) {
+        inMemoryFallback.set(key, serialized);
+        return;
+    }
+
+    try {
+        await redis.set(key, serialized, 'EX', RULES_TTL);
+    } catch (err) {
+        console.error('[Redis] setDynamicRules error:', err.message);
+        inMemoryFallback.set(key, serialized);
+    }
+}
+
+async function clearDynamicRules(clientId) {
+    const redis = getClient();
+    const key = rulesKey(clientId);
+
+    if (!redis) {
+        inMemoryFallback.delete(key);
+        return;
+    }
+
+    try {
+        await redis.del(key);
+    } catch (err) {
+        console.error('[Redis] clearDynamicRules error:', err.message);
+    }
+}
+
 module.exports = {
     getSession,
     setSession,
@@ -153,4 +212,7 @@ module.exports = {
     pauseSession,
     resumeSession,
     isSessionPaused,
+    getDynamicRules,
+    setDynamicRules,
+    clearDynamicRules,
 };
