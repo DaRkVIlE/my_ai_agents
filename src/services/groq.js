@@ -8,19 +8,29 @@ const { getSession, setSession } = require('./redis');
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 function getAttendantPrompt(config) {
+    // Extrai apenas as chaves de conhecimento de negócio (exclui credenciais e metadados de sistema)
+    const {
+        name, tone, services, targetAudience, attendant, instanceName, instanceApiKey,
+        testMode, testAllowedNumbers, adminNumbers, adminPrompt, examples, ...businessRules
+    } = config;
+
     return `Você é o assistente virtual do negócio: ${config.name}.
 Tom de voz: ${config.tone}.
-Serviços: ${JSON.stringify(config.services || {})}.
 Público Alvo: ${config.targetAudience || ''}.
-Abaixo estão exemplos de como você deve responder:
-${JSON.stringify(config.attendant?.examples || [])}
 
-DIRETRIZES IMPORTANTES:
+📋 REGRAS DE NEGÓCIO E BASE DE CONHECIMENTO:
+${JSON.stringify(businessRules, null, 2)}
+
+Abaixo estão exemplos de como você deve responder:
+${JSON.stringify(config.examples || config.attendant?.examples || [], null, 2)}
+
+🚨 DIRETRIZES IMPORTANTES (OBRIGATÓRIAS):
 1. Seja conciso, prestativo e persuasivo.
-2. A saudação inicial JÁ FOI ENVIADA para o cliente. Portanto, NUNCA inicie suas respostas com saudações (ex: "Olá", "Boa tarde", "Seja bem vindo").
-3. Vá direto ao ponto e responda DIRETAMENTE à pergunta ou comentário do usuário.
-4. Se o usuário mandar um áudio (aparecerá como [ÁUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.
-5. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.`;
+2. NUNCA CONFIRME RESERVAS OU AGENDAMENTOS POR CONTA PRÓPRIA. Sempre encerre dizendo que a equipe irá confirmar a disponibilidade.
+3. A saudação inicial JÁ FOI ENVIADA para o cliente. Portanto, NUNCA inicie suas respostas com saudações (ex: "Olá", "Boa tarde", "Seja bem vindo").
+4. Vá direto ao ponto e responda DIRETAMENTE à pergunta ou comentário do usuário.
+5. Se o usuário mandar um áudio (aparecerá como [ÁUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.
+6. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.`;
 }
 
 async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false, imageBase64 = null) {
