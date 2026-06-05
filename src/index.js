@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { generateResponse, transcribeAudio } = require('./services/groq');
 const { sendMessage, getMediaBase64 } = require('./services/evolution');
-const { isSessionPaused, pauseSession, resumeSession, clearSession } = require('./services/redis');
+const { isSessionPaused, pauseSession, resumeSession, clearSession, isBotOnStandby, setBotStandby } = require('./services/redis');
 
 const app = express();
 app.use(express.json());
@@ -127,7 +127,16 @@ async function handleWebhook(req, res) {
             });
         }
 
-        // ── Handoff: verificar pausa da sessão (não se aplica a admins) ──────
+        // ── STANDBY GLOBAL: bloqueia todos os clientes se o bot estiver em standby ─────────
+        if (!isAdmin) {
+            const onStandby = await isBotOnStandby(clientId);
+            if (onStandby) {
+                console.log(`[Standby] 🔕 Bot em standby para ${clientId} — mensagem ignorada de ${remoteJid}`);
+                return res.status(200).send('Bot on standby');
+            }
+        }
+
+        // ── Handoff: verificar pausa da sessão (não se aplica a admins) ──────────
         if (!isAdmin) {
             const paused = await isSessionPaused(clientId, remoteJid);
             if (paused) {
@@ -136,14 +145,31 @@ async function handleWebhook(req, res) {
             }
         }
 
-        // ── Processar mensagem de Admin: comandos de retomada ────────────────
+        // ── STANDBY GLOBAL DO BOT (Admin only) ─────────────────────────────────
         if (isAdmin) {
             const rawText = msgData.message?.conversation || msgData.message?.extendedTextMessage?.text || '';
+            const lowerAdmin = rawText.toLowerCase().trim();
+
+            // Comandos de retomada de sessão de cliente
             const retomadaMatch = rawText.match(/retomar\s+([\d@\w.]+)/i);
             if (retomadaMatch) {
                 const targetJid = retomadaMatch[1].includes('@') ? retomadaMatch[1] : `${retomadaMatch[1]}@s.whatsapp.net`;
                 await resumeSession(clientId, targetJid);
                 await sendMessage(clientId, remoteJid, `✅ Bot reativado para: ${targetJid}`, config);
+                return res.status(200).send('OK');
+            }
+
+            // Standby global: desligar o bot
+            if (lowerAdmin === 'desligar bot' || lowerAdmin === 'bot off' || lowerAdmin === 'standby') {
+                await setBotStandby(clientId, true);
+                await sendMessage(clientId, remoteJid, '🔕 Bot em *standby*. Não responderei nenhum cliente até você enviar *ligar bot*.', config);
+                return res.status(200).send('OK');
+            }
+
+            // Standby global: ligar o bot
+            if (lowerAdmin === 'ligar bot' || lowerAdmin === 'bot on' || lowerAdmin === 'ativar bot') {
+                await setBotStandby(clientId, false);
+                await sendMessage(clientId, remoteJid, '🟢 Bot *ativado*! Voltei a responder os clientes normalmente.', config);
                 return res.status(200).send('OK');
             }
         }

@@ -49,6 +49,10 @@ function pauseKey(clientId, jid) {
     return `paused:${clientId}:${jid}`;
 }
 
+function standbyKey(clientId) {
+    return `standby:${clientId}`;
+}
+
 async function getSession(clientId, jid) {
     const redis = getClient();
     const key = sessionKey(clientId, jid);
@@ -205,6 +209,47 @@ async function clearDynamicRules(clientId) {
     }
 }
 
+// ── STANDBY GLOBAL DO BOT ─────────────────────────────────────────────────────
+// Desliga/liga o bot inteiro para um clientId (ignora todos os clientes enquanto ativo)
+
+async function setBotStandby(clientId, active) {
+    const redis = getClient();
+    const key = standbyKey(clientId);
+
+    if (!redis) {
+        if (active) inMemoryFallback.set(key, '1');
+        else inMemoryFallback.delete(key);
+        return;
+    }
+
+    try {
+        if (active) {
+            await redis.set(key, '1'); // sem expiração — só desliga com comando
+        } else {
+            await redis.del(key);
+        }
+    } catch (err) {
+        console.error('[Redis] setBotStandby error:', err.message);
+    }
+}
+
+async function isBotOnStandby(clientId) {
+    const redis = getClient();
+    const key = standbyKey(clientId);
+
+    if (!redis) {
+        return inMemoryFallback.has(key);
+    }
+
+    try {
+        const val = await redis.get(key);
+        return val === '1';
+    } catch (err) {
+        console.error('[Redis] isBotOnStandby error:', err.message);
+        return false;
+    }
+}
+
 module.exports = {
     getSession,
     setSession,
@@ -215,4 +260,6 @@ module.exports = {
     getDynamicRules,
     setDynamicRules,
     clearDynamicRules,
+    setBotStandby,
+    isBotOnStandby,
 };

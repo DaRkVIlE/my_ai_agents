@@ -111,6 +111,21 @@ async function handleDynamicRuleCommand(clientId, userMessage) {
         return `📋 *Regras ativas (${rules.length}/${MAX_DYNAMIC_RULES}):*\n${lista}\n\n⏰ Expira automaticamente em ~18h.`;
     }
 
+    // ── Atalhos sem colchete (mais fácil no celular) ──────────────────────
+    // !regra texto        → equivale a [REGRA] texto
+    // !regras             → equivale a [REGRAS]
+    // !limpar             → equivale a [LIMPAR REGRAS]
+    // !remover N          → equivale a [REMOVER REGRA] N
+    const aliasAdd = msg.match(/^!regra\s+(.+)/is);
+    if (aliasAdd) return handleDynamicRuleCommand(clientId, `[REGRA] ${aliasAdd[1].trim()}`);
+
+    if (/^!regras$/i.test(msg)) return handleDynamicRuleCommand(clientId, '[REGRAS]');
+
+    if (/^!limpar$/i.test(msg)) return handleDynamicRuleCommand(clientId, '[LIMPAR REGRAS]');
+
+    const aliasRemove = msg.match(/^!remover\s+(\d+)/i);
+    if (aliasRemove) return handleDynamicRuleCommand(clientId, `[REMOVER REGRA] ${aliasRemove[1]}`);
+
     // Não é um comando de regra dinâmica
     return null;
 }
