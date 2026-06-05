@@ -1,7 +1,10 @@
 {
   "name": "Ateliê Dhecor Sao jorge (tapeçaria e decoração)",
   "ownerName": "Paulo",
-  "ownerNicknames": ["paulo", "chefe"],
+  "ownerNicknames": [
+    "paulo",
+    "chefe"
+  ],
   "segment": "tapeceiro_atelie",
   "tone": "consultivo, confiante, especialista, cordial",
   "address": "Ateliê — retirada e entrega a combinar",
@@ -88,7 +91,6 @@
   "instanceApiKey": "",
   "testMode": true,
   "testAllowedNumbers": [
-    "5511974375794",
     "5511977010955"
   ],
   "adminNumbers": [

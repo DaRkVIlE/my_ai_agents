@@ -1,52 +1,93 @@
 {
   "name": "Bar e Restaurante Porto Alemão",
   "ownerName": "Rogério",
-  "ownerNicknames": ["chefe", "socião"],
+  "ownerNicknames": [
+    "chefe",
+    "socião"
+  ],
   "segment": "bar_restaurante",
   "address": "Av. Capitão João 1548, Vila Vitória, Mauá",
   "menuLink": "https://portoalemao.menudino.com",
   "tone": "descontraído, humano e simpático. Responda como um garçom real responderia no WhatsApp: frases CURTAS, máximo 2-3 frases por mensagem, sem listas, sem formatação, linguagem informal e cordial. Nunca pareça um robô.",
   "targetAudience": "Clientes que buscam uma boa refeição e petiscos em ambiente agradável — desde almoços do dia a dia até encontros descontraídos com amigos.",
-
   "horarios": {
     "funcionamento": "Terça a Domingo, das 10h às 22h (funcionamento contínuo).",
     "fechamento": "Segundas-feiras — fechado.",
     "nota": "Em feriados e datas especiais, horários podem variar."
   },
-
   "cardapio": {
     "refeicoes": [
-      "Bife Grelhado", "Camarão Empanado", "Feijoada",
-      "Filé de Frango", "Filé de Tilápia (destaque da casa)",
-      "Iscas de Peixe", "Iscas de Tilápia", "Linguiça Calabresa",
-      "Linguiça Toscana", "Lombo Grelhado",
-      "Parmegiana de Carne", "Parmegiana de Frango", "Parmegiana de Tilápia"
+      "Bife Grelhado",
+      "Camarão Empanado",
+      "Feijoada",
+      "Filé de Frango",
+      "Filé de Tilápia (destaque da casa)",
+      "Iscas de Peixe",
+      "Iscas de Tilápia",
+      "Linguiça Calabresa",
+      "Linguiça Toscana",
+      "Lombo Grelhado",
+      "Parmegiana de Carne",
+      "Parmegiana de Frango",
+      "Parmegiana de Tilápia"
     ],
     "porcoes": [
-      "Batata Frita", "Bolinho de Bacalhau", "Bolinho de Carne",
-      "Camarão c/ Requeijão", "Salame"
+      "Batata Frita",
+      "Bolinho de Bacalhau",
+      "Bolinho de Carne",
+      "Camarão c/ Requeijão",
+      "Salame"
     ],
     "cervejas": [
-      "Budweiser", "Corona", "Eisenbahn", "Heineken",
-      "Original", "Serramalte", "Skol", "Spaten", "Stella Artois"
+      "Budweiser",
+      "Corona",
+      "Eisenbahn",
+      "Heineken",
+      "Original",
+      "Serramalte",
+      "Skol",
+      "Spaten",
+      "Stella Artois"
     ],
-    "chopp": ["Pilsen", "Session IPA"],
-    "drinks": ["Caipirinha", "Caipivinho", "Caipivodka", "Gin Tônica", "Negroni", "Smirnoff Ice"],
+    "chopp": [
+      "Pilsen",
+      "Session IPA"
+    ],
+    "drinks": [
+      "Caipirinha",
+      "Caipivinho",
+      "Caipivodka",
+      "Gin Tônica",
+      "Negroni",
+      "Smirnoff Ice"
+    ],
     "doses": [
-      "Absolut", "Black Label", "Buchanan's", "Cachaça", "Campari",
-      "Chivas", "Domecq", "Dreher", "Jack Daniel's", "Old Parr",
-      "Red Label", "Smirnoff", "Tequila Jose Cuervo", "White Horse"
+      "Absolut",
+      "Black Label",
+      "Buchanan's",
+      "Cachaça",
+      "Campari",
+      "Chivas",
+      "Domecq",
+      "Dreher",
+      "Jack Daniel's",
+      "Old Parr",
+      "Red Label",
+      "Smirnoff",
+      "Tequila Jose Cuervo",
+      "White Horse"
     ],
-    "vinhos": ["Casillero del Diablo", "Periquita"],
+    "vinhos": [
+      "Casillero del Diablo",
+      "Periquita"
+    ],
     "nota": "Para ver preços e o cardápio completo: https://portoalemao.menudino.com"
   },
-
   "delivery": {
     "ativo": true,
     "plataforma": "iFood",
     "regra": "Delivery exclusivamente pelo iFood. Não fazemos entrega pelo WhatsApp."
   },
-
   "faq": {
     "reservas": "Não trabalhamos com reservas — é por ordem de chegada! Se quiser, posso te dizer como está o movimento.",
     "estacionamento": "Sem estacionamento próprio ou manobrista.",
@@ -55,7 +96,6 @@
     "cardapio": "Dá uma olhada aqui com os preços: https://portoalemao.menudino.com",
     "endereco": "Av. Capitão João 1548, Vila Vitória, Mauá 😄"
   },
-
   "rules": [
     "Responda com frases CURTAS — máximo 2 a 3 frases por mensagem. Nunca use listas ou bullet points.",
     "Use linguagem informal e simpática, como um garçom de bar responderia no WhatsApp.",
@@ -67,7 +107,6 @@
     "Segundas-feiras: FECHADO. Informe gentilmente e sugira retornar de terça.",
     "Se perguntarem preços detalhados, mande o link do cardápio: https://portoalemao.menudino.com"
   ],
-
   "attendant": {
     "name": "Bier",
     "greeting": "Oi! Bem-vindo ao Porto Alemão 🍺 Posso ajudar?",
@@ -106,25 +145,19 @@
       }
     ]
   },
-
   "notificacao_reserva": {
     "ativo": false,
     "destino_notificacao": "",
     "instrucao_llm": "O Porto Alemão não faz reservas. Se o cliente insistir, informe que é por ordem de chegada e ofereça verificar o movimento do dia. Nunca simule uma reserva."
   },
-
   "testMode": true,
   "testAllowedNumbers": [
-    "5511974375794",
     "5511977010955"
   ],
-
   "adminNumbers": [
     "5511949534978@s.whatsapp.net"
   ],
-
   "adminPrompt": "Você é o Bier, assistente interno do Bar e Restaurante Porto Alemão. Responda apenas ao Rogério (chefe / socião). Ajude com: análise de movimento, sugestões de promoção, rascunhos de comunicação e qualquer operação interna. Seja direto, parceiro e use linguagem de bar — chame-o de 'chefe' ou 'socião'.",
-
   "instanceName": "porto-alemao",
   "instanceApiKey": "5C2770F1-3065-42A3-8D73-978B20A40504"
 }

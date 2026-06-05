@@ -4,10 +4,9 @@ const path = require('path');
 const os = require('os');
 const { chat } = require('./llm');
 const { getSession, setSession, getDynamicRules, setDynamicRules, clearDynamicRules } = require('./redis');
+const apiRouter = require('./apiRouter');
 
 const MAX_DYNAMIC_RULES = 10;
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // ── NOTIFICAÇÃO DE RESERVA ───────────────────────────────────────────────────────────────
 async function sendReservationNotification(config, reservaData, clienteJid) {
@@ -317,13 +316,82 @@ async function transcribeAudio(base64Audio) {
 
         console.log(`[Whisper] Enviando para transcrição: ${tempFilePath} (${ext})`);
 
-        const transcription = await groq.audio.transcriptions.create({
-            file: fs.createReadStream(tempFilePath),
-            model: 'whisper-large-v3',
-            language: 'pt',
-        });
+        let transcription = null;
+        let groqSuccess = false;
+
+        // 1. Tentar Groq (Whisper) com rotação total das chaves
+        const keysConfig = require('../config/keys.json');
+        const groqMaxAttempts = keysConfig.groq ? keysConfig.groq.length : 3;
+        let currentGroqKey = apiRouter.getKey('groq');
+
+        for (let i = 0; i < groqMaxAttempts; i++) {
+            if (!currentGroqKey) break;
+            try {
+                const groqClient = new Groq({ apiKey: currentGroqKey });
+                transcription = await groqClient.audio.transcriptions.create({
+                    file: fs.createReadStream(tempFilePath),
+                    model: 'whisper-large-v3',
+                    language: 'pt',
+                });
+                groqSuccess = true;
+                break; 
+            } catch (err) {
+                console.warn(`[Whisper-Groq] Falha na chave: ${err.message} — Rotacionando...`);
+                currentGroqKey = apiRouter.rotateKey('groq');
+            }
+        }
+
+        // 2. Fallback para Gemini 1.5 Flash (Visão/Áudio) caso Groq caia totalmente
+        if (!groqSuccess) {
+            console.warn('[Whisper-Fallback] Groq falhou. Acionando Gemini 1.5 Flash para transcrição de áudio...');
+            const geminiMaxAttempts = keysConfig.gemini ? keysConfig.gemini.length : 3;
+            let currentGeminiKey = apiRouter.getKey('gemini');
+            const axios = require('axios'); // Garantir axios
+            
+            for (let i = 0; i < geminiMaxAttempts; i++) {
+                if (!currentGeminiKey) break;
+                try {
+                    const base64AudioData = fs.readFileSync(tempFilePath).toString("base64");
+                    
+                    let mimeType = 'audio/ogg';
+                    if (ext === 'mp4') mimeType = 'audio/mp4';
+                    else if (ext === 'mp3') mimeType = 'audio/mp3';
+                    else if (ext === 'wav') mimeType = 'audio/wav';
+
+                    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${currentGeminiKey}`;
+                    const response = await axios.post(geminiUrl, {
+                        contents: [{
+                            parts: [
+                                { text: "Por favor, transcreva exatamente o que é dito neste áudio em português. Não adicione nenhum comentário, markdown ou tradução. Apenas a transcrição em texto puro:" },
+                                {
+                                    inlineData: {
+                                        mimeType: mimeType,
+                                        data: base64AudioData
+                                    }
+                                }
+                            ]
+                        }]
+                    }, { timeout: 30000 });
+
+                    const textoGerado = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (textoGerado) {
+                        transcription = { text: textoGerado.trim() };
+                        break; // Sucesso
+                    }
+                } catch (err) {
+                    const status = err.response ? err.response.status : 'Unknown';
+                    console.warn(`[Whisper-Fallback] Falha na chave Gemini (${status}): ${err.message} — Rotacionando...`);
+                    currentGeminiKey = apiRouter.rotateKey('gemini');
+                }
+            }
+        }
 
         fs.unlinkSync(tempFilePath);
+
+        if (!transcription || !transcription.text) {
+            console.error('[Whisper] Todas as tentativas de transcrição (Groq e Gemini) falharam.');
+            return null;
+        }
 
         console.log(`[Whisper] Transcrição concluída: "${transcription.text}"`);
         return transcription.text;
