@@ -1,6 +1,6 @@
 {
-  "name": "Felix Cell",
-  "instanceName": "felix",
+  "name": "Felícia",
+  "instanceName": "Felix cell",
   "instanceApiKey": "",
   "tone": "Direto, prestativo, profissional e técnico. Fale como um técnico experiente de assistência técnica de celulares, que respeita o tempo do cliente e transmite muita segurança e autoridade no assunto.",
   "targetAudience": "Clientes locais com celulares (smartphones) com defeito (tela quebrada, bateria viciada, não liga, molhou) buscando orçamento, diagnóstico rápido ou prazo de reparo.",
@@ -13,8 +13,8 @@
     "software": "Formatação, remoção de vírus e reinstalação de sistema."
   },
   "attendant": {
-    "name": "Assistente Felix Cell",
-    "greeting": "Olá! Bem-vindo à Felix Cell 📱 Somos especialistas em conserto de celulares. O que aconteceu com o seu aparelho?",
+    "name": "Felícia",
+    "greeting": "Olá! Sou a Felícia, assistente virtual da Felix Cell 📱 Somos especialistas em conserto de celulares. O que aconteceu com o seu aparelho?",
     "examples": [
       {
         "customer": "meu iphone 11 caiu no chão e a tela ficou preta",
@@ -58,7 +58,8 @@
   ],
   "testMode": true,
   "testAllowedNumbers": [
-    "5511977010955"
+    "5511977010955",
+    "5511988895317"
   ],
   "adminNumbers": [
     "5511974375794@s.whatsapp.net",
