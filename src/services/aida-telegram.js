@@ -145,7 +145,7 @@ async function startFirstScene(ctx, telegramId) {
         // Enviar voz (listening training) — não bloqueia se falhar
         const voiceFile = await generateVoiceMessage(cleanReply, student.interesse);
         if (voiceFile) {
-            await ctx.sendVoice({ source: createReadStream(voiceFile) });
+            await ctx.sendAudio({ source: createReadStream(voiceFile) });
             cleanupTempFile(voiceFile);
         }
     } catch (err) {
@@ -294,7 +294,7 @@ aida.on('message', async (ctx) => {
         generateVoiceMessage(cleanReply, student.interesse)
             .then(voiceFile => {
                 if (voiceFile) {
-                    return ctx.sendVoice({ source: createReadStream(voiceFile) })
+                    return ctx.sendAudio({ source: createReadStream(voiceFile) })
                         .then(() => cleanupTempFile(voiceFile));
                 }
             })

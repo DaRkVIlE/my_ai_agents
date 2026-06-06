@@ -1,71 +1,52 @@
 /**
- * AIDA TTS — Text-to-Speech via Groq
+ * AIDA TTS — Text-to-Speech (Free Tier)
  * Gera mensagens de voz para o aluno treinar listening
  * 
- * Formato de saída: .ogg (Opus) — nativo do Telegram Voice Message
+ * Usando google-tts-api (free, sem chave)
  * Dex (Dev) — Experia Solutions
  */
 
-const Groq = require('groq-sdk');
+const googleTTS = require('google-tts-api');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-
-// Vozes disponíveis no Groq TTS (PlayAI)
-// Usamos vozes em inglês para o aluno treinar listening
-const PERSONA_VOICES = {
-    tech:     'Fritz-PlayAI',      // Alex — voz masculina neutra, americana
-    sports:   'Mason-PlayAI',      // Jordan — voz masculina energética
-    travel:   'Aaliyah-PlayAI',    // Mia — voz feminina britânica
-    business: 'Fritz-PlayAI',      // Chris — voz profissional
-    culture:  'Atlas-PlayAI',      // Sam — voz masculina laid-back
-    general:  'Celeste-PlayAI',    // Jamie — voz feminina calorosa, padrão
-};
-
-const DEFAULT_VOICE = 'Celeste-PlayAI';
-const TTS_MODEL = 'playai-tts';
+const axios = require('axios');
 
 /**
- * Gera áudio a partir de texto usando Groq TTS
+ * Gera áudio a partir de texto usando Google TTS
  * @param {string} text - Texto a ser convertido em áudio
- * @param {string} interesse - Interesse do aluno (tech/sports/travel/etc) para selecionar voz
- * @returns {Buffer|null} - Buffer .ogg pronto para enviar ao Telegram, ou null se falhar
+ * @param {string} interesse - Interesse do aluno (ignorado no TTS gratuito)
+ * @returns {string|null} - Caminho do arquivo de áudio temporário ou null
  */
 async function generateVoiceMessage(text, interesse = 'general') {
-    if (!process.env.GROQ_API_KEY) {
-        console.warn('[TTS] GROQ_API_KEY não definida — TTS desabilitado');
-        return null;
-    }
-
-    // Limitar texto (TTS tem limite de ~4000 chars, mas shortcircuit para mensagens longas)
-    const truncated = text.length > 500 ? text.substring(0, 500) + '...' : text;
-
-    // Selecionar voz baseado na persona do tutor
-    const voice = PERSONA_VOICES[interesse] || DEFAULT_VOICE;
+    // Limitar texto para o TTS gratuito (limite seguro é ~200 chars por request no google-tts-api, 
+    // mas o pacote divide automaticamente se usarmos getAllAudioBase64,
+    // para evitar atrasos no bot vamos truncar se for muito longo)
+    const truncated = text.length > 500 ? text.substring(0, 500) : text;
 
     let tempFilePath = null;
 
     try {
-        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+        console.log(`[TTS] Gerando voz via Google TTS (free) | ${truncated.length} chars`);
 
-        console.log(`[TTS] Gerando voz: ${voice} | ${truncated.length} chars`);
-
-        const response = await groq.audio.speech.create({
-            model: TTS_MODEL,
-            voice: voice,
-            input: truncated,
-            response_format: 'opus', // Opus = .ogg, nativo do Telegram
+        // Obter os buffers de áudio em base64 do Google TTS
+        // O getAllAudioBase64 contorna o limite de 200 caracteres dividindo o texto internamente
+        const audioParts = await googleTTS.getAllAudioBase64(truncated, {
+            lang: 'en',
+            slow: false,
+            host: 'https://translate.google.com',
+            splitPunct: ',.?!',
         });
 
-        // Converter resposta para Buffer
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        // Juntar os buffers
+        const bufferList = audioParts.map(part => Buffer.from(part.base64, 'base64'));
+        const finalBuffer = Buffer.concat(bufferList);
 
-        console.log(`[TTS] Áudio gerado: ${buffer.length} bytes`);
+        console.log(`[TTS] Áudio gerado: ${finalBuffer.length} bytes`);
 
-        // Salvar temporariamente (o Telegraf precisa de stream ou path para sendVoice)
-        tempFilePath = path.join(os.tmpdir(), `aida_tts_${Date.now()}.ogg`);
-        fs.writeFileSync(tempFilePath, buffer);
+        // Salvar temporariamente como MP3
+        tempFilePath = path.join(os.tmpdir(), `aida_tts_${Date.now()}.mp3`);
+        fs.writeFileSync(tempFilePath, finalBuffer);
 
         return tempFilePath;
 
