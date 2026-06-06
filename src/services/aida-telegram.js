@@ -9,8 +9,10 @@
  */
 
 const { Telegraf } = require('telegraf');
+const { createReadStream } = require('fs');
 const { chat } = require('./llm');
 const db = require('./aida-db');
+const { generateVoiceMessage, cleanupTempFile } = require('./aida-tts');
 const {
     buildImmersionPrompt,
     buildQuestionPrompt,
@@ -137,7 +139,15 @@ async function startFirstScene(ctx, telegramId) {
             nivelMomento: student.nivel_numerico,
         });
 
+        // Enviar texto
         await ctx.reply(cleanReply);
+
+        // Enviar voz (listening training) — não bloqueia se falhar
+        const voiceFile = await generateVoiceMessage(cleanReply, student.interesse);
+        if (voiceFile) {
+            await ctx.sendVoice({ source: createReadStream(voiceFile) });
+            cleanupTempFile(voiceFile);
+        }
     } catch (err) {
         console.error('[AIDA] Erro no icebreaker:', err.message);
         await ctx.reply('Hey! Ready to start? 🚀 Tell me — what\'s something you\'ve been thinking about lately related to your interests?');
@@ -252,7 +262,18 @@ aida.on('message', async (ctx) => {
             console.error('[AIDA] Erro na calibração:', err.message)
         );
 
+        // Enviar texto
         await ctx.reply(cleanReply);
+
+        // Enviar voz para treino de listening (assíncrono, não bloqueia fluxo)
+        generateVoiceMessage(cleanReply, student.interesse)
+            .then(voiceFile => {
+                if (voiceFile) {
+                    return ctx.sendVoice({ source: createReadStream(voiceFile) })
+                        .then(() => cleanupTempFile(voiceFile));
+                }
+            })
+            .catch(err => console.error('[AIDA-TTS] Erro ao enviar voz:', err.message));
 
     } catch (err) {
         console.error('[AIDA] Erro crítico no handler:', err.message, err.stack);
