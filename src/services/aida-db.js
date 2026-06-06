@@ -66,9 +66,16 @@ async function updateStudentProfile(telegramId, profile) {
 }
 
 async function updateStudentAccess(telegramId) {
+    // Incrementa sessoes_total apenas 1x por hora (evita contar cada mensagem como sessão)
     await pool.query(
         `UPDATE students 
-         SET ultimo_acesso = NOW(), sessoes_total = sessoes_total + 1, updated_at = NOW()
+         SET ultimo_acesso = NOW(),
+             sessoes_total = CASE
+                 WHEN ultimo_acesso IS NULL OR NOW() - ultimo_acesso > INTERVAL '1 hour'
+                 THEN sessoes_total + 1
+                 ELSE sessoes_total
+             END,
+             updated_at = NOW()
          WHERE telegram_id = $1`,
         [telegramId]
     );
@@ -173,15 +180,22 @@ async function clearSession(telegramId) {
 
 async function logMessage(telegramId, role, content, meta = {}) {
     const { cenaTipo, faseMomento, nivelMomento, producaoPalavras } = meta;
-    const wordCount = role === 'user' && content
-        ? content.split(/\s+/).filter(Boolean).length
+
+    // Sanitizar: remover tags <tts> do conteúdo antes de persistir no log
+    const sanitizedContent = content ? content.replace(/<tts>[\s\S]*?<\/tts>/ig, (match) => {
+        // mantém o texto mas sem as tags
+        return match.replace(/<\/?tts>/ig, '');
+    }) : content;
+
+    const wordCount = role === 'user' && sanitizedContent
+        ? sanitizedContent.split(/\s+/).filter(Boolean).length
         : null;
 
     await pool.query(
         `INSERT INTO conversation_log 
          (telegram_id, role, content, cena_tipo, fase_momento, nivel_momento, producao_palavras)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [telegramId, role, content, cenaTipo || null, faseMomento || null, nivelMomento || null, wordCount || producaoPalavras || null]
+        [telegramId, role, sanitizedContent, cenaTipo || null, faseMomento || null, nivelMomento || null, wordCount || producaoPalavras || null]
     );
 }
 
@@ -343,5 +357,5 @@ module.exports = {
     getOnboardingState, updateOnboardingStep, completeOnboarding,
     // Utils
     healthCheck,
-    pool, // Exposto para queries customizadas
+    // NOTA: pool NÃO é exportado intencionalmente — use as funções acima
 };
