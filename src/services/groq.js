@@ -112,14 +112,14 @@ async function handleDynamicRuleCommand(clientId, userMessage) {
     }
 
     // ── Atalhos sem colchete (mais fácil no celular) ──────────────────────
-    // !regra texto        → equivale a [REGRA] texto
+    // !regra texto ou !termo texto → equivale a [REGRA] texto
     // !regras             → equivale a [REGRAS]
     // !limpar             → equivale a [LIMPAR REGRAS]
     // !remover N          → equivale a [REMOVER REGRA] N
-    const aliasAdd = msg.match(/^!regra\s+(.+)/is);
+    const aliasAdd = msg.match(/^!(?:regra|termo)\s+(.+)/is);
     if (aliasAdd) return handleDynamicRuleCommand(clientId, `[REGRA] ${aliasAdd[1].trim()}`);
 
-    if (/^!regras$/i.test(msg)) return handleDynamicRuleCommand(clientId, '[REGRAS]');
+    if (/^!(?:regras|termos)$/i.test(msg)) return handleDynamicRuleCommand(clientId, '[REGRAS]');
 
     if (/^!limpar$/i.test(msg)) return handleDynamicRuleCommand(clientId, '[LIMPAR REGRAS]');
 

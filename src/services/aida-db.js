@@ -48,11 +48,11 @@ async function updateStudentProfile(telegramId, profile) {
     const { nivel_numerico, interesse, objetivo, disponibilidade, tom, tutor_nome } = profile;
     const res = await pool.query(
         `UPDATE students 
-         SET nivel_numerico = $2,
+         SET nivel_numerico = $2::smallint,
              nivel = $2::text,
              interesse = $3,
              objetivo = $4,
-             disponibilidade = $5,
+             disponibilidade = $5::smallint,
              tom = $6,
              tutor_nome = $7,
              onboarding_completo = TRUE,
@@ -77,7 +77,7 @@ async function updateStudentAccess(telegramId) {
 async function updateStudentLevel(telegramId, newLevel) {
     await pool.query(
         `UPDATE students 
-         SET nivel_numerico = $2, nivel = $2::text, updated_at = NOW()
+         SET nivel_numerico = $2::smallint, nivel = $2::text, updated_at = NOW()
          WHERE telegram_id = $1`,
         [telegramId, newLevel]
     );
