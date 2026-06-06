@@ -264,10 +264,12 @@ aida.on('message', async (ctx) => {
         // ── Chamar LLM ────────────────────────────────────────────────────────
         const typingAction = ctx.sendChatAction('typing');
         const reply = await chat(chatHistory, aidaConfig);
-        const cleanReply = reply.trim();
+        const rawReply = reply.trim(); // versão original, com tags <tts> (salva no DB)
+        let cleanReply = rawReply;     // versão limpa para enviar ao usuário
 
         // ── Persistir resposta ────────────────────────────────────────────────
-        chatHistory.push({ role: 'assistant', content: cleanReply });
+        // Salvar a resposta RAW (com tags) no histórico para contexto do LLM
+        chatHistory.push({ role: 'assistant', content: rawReply });
 
         await db.upsertSession(
             telegramId,
@@ -276,7 +278,7 @@ aida.on('message', async (ctx) => {
             sessionData?.cenaContexto
         );
 
-        await db.logMessage(telegramId, 'assistant', cleanReply, {
+        await db.logMessage(telegramId, 'assistant', rawReply, {
             cenaTipo: sessionData?.cenaTipo,
             faseMomento: student.fase,
             nivelMomento: student.nivel_numerico,
