@@ -200,10 +200,13 @@ async function getRecentMessages(telegramId, limit = 50) {
 async function getAverageWordCount(telegramId, lastNSessions = 5) {
     const res = await pool.query(
         `SELECT AVG(producao_palavras) as avg_words
-         FROM conversation_log
-         WHERE telegram_id = $1 AND role = 'user' AND producao_palavras IS NOT NULL
-         ORDER BY created_at DESC
-         LIMIT $2`,
+         FROM (
+             SELECT producao_palavras
+             FROM conversation_log
+             WHERE telegram_id = $1 AND role = 'user' AND producao_palavras IS NOT NULL
+             ORDER BY created_at DESC
+             LIMIT $2
+         ) sub`,
         [telegramId, lastNSessions * 5] // ~5 msgs per session
     );
     return parseFloat(res.rows[0]?.avg_words || 0);

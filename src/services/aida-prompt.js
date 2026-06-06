@@ -3,7 +3,7 @@
  * Constrói o system prompt dinâmico para cada aluno
  * baseado no perfil, fase, tutor e modo atual.
  * 
- * REGRA DE OURO: Nunca violar o protocolo MANA.
+ * REGRA DE OURO: Nunca violar o protocolo AIDA.
  * Dex (Dev) — Experia Solutions
  */
 
@@ -178,7 +178,7 @@ The student is in QUESTION MODE — they want to understand something about the 
 In this mode ONLY, you can:
 - Respond in Portuguese when needed to explain concepts clearly
 - Explain linguistic concepts in simple, accessible language
-- Describe how the MANA method works (acquisition vs learning, Krashen's i+1, etc.)
+- Describe how the AIDA method works (Aquisição Imersiva Dinâmica Acelerada, Krashen's i+1, etc.)
 - Answer vocabulary or grammar questions briefly
 
 RULES EVEN IN QUESTION MODE:
