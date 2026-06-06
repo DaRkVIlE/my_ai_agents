@@ -158,11 +158,36 @@ async function startFirstScene(ctx, telegramId) {
 
 aida.on('message', async (ctx) => {
     const telegramId = ctx.from.id;
-    const text = ctx.message?.text || '';
+    let text = ctx.message?.text || '';
     const nome = ctx.from.first_name || 'Student';
 
-    // Ignorar comandos (tratados separadamente)
-    if (text.startsWith('/')) return;
+    // ── PROCESSAMENTO DE ÁUDIO (Voice Notes) ──────────────────────────────
+    if (ctx.message?.voice) {
+        try {
+            await ctx.sendChatAction('typing');
+            const fileLink = await ctx.telegram.getFileLink(ctx.message.voice.file_id);
+            const axios = require('axios');
+            const response = await axios.get(fileLink.href, { responseType: 'arraybuffer' });
+            const base64Audio = Buffer.from(response.data).toString('base64');
+            const { transcribeAudio } = require('./groq');
+            
+            const transcricao = await transcribeAudio(`data:audio/ogg;base64,${base64Audio}`);
+            if (transcricao) {
+                text = `[ÁUDIO TRANSCRITO] ${transcricao}`;
+                // Opcional: ecoar a transcrição para o usuário saber que o bot entendeu (opcional, omitido para naturalidade)
+            } else {
+                await ctx.reply('Sorry, I couldn\'t hear that clearly. Could you say it again or type it?');
+                return;
+            }
+        } catch (err) {
+            console.error('[AIDA] Erro ao baixar/transcrever áudio:', err.message);
+            await ctx.reply('Ops, my ears are acting up! Could you type that for me?');
+            return;
+        }
+    }
+
+    // Ignorar comandos puros (tratados separadamente) ou mensagens vazias não-áudio
+    if (text.startsWith('/') || !text.trim()) return;
 
     try {
         // Verificar ou criar aluno
