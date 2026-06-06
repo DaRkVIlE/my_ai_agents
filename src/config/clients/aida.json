@@ -120,7 +120,7 @@
   },
 
   "onboarding": {
-    "welcomeMessage": "Olá! 👋 Bem-vindo ao AIDA — seu tutor particular de inglês com IA.\n\nVou te fazer 5 perguntas rápidas para personalizar tudo pra você. Leva 2 minutos e depois sua primeira aula começa na hora. Bora? 🚀",
+    "welcomeMessage": "Olá! 👋 Bem-vindo ao My AIDA — seu tutor particular de inglês com IA.\n\nEu tenho várias personalidades e estilos diferentes dependendo do que você curte (tecnologia, viagens, esportes...). Vou te fazer 5 perguntas rápidas para configurar o tutor perfeito pra você. Leva 2 minutos e a primeira cena já começa. Bora? 🚀",
     "questions": [
       {
         "id": "nivel",
