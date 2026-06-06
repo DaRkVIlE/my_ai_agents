@@ -82,7 +82,7 @@ COMMENT ON COLUMN students.modo_atual IS 'imersao=prática contextual | duvida=p
 -- ================================================================
 CREATE TABLE IF NOT EXISTS sessions (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    telegram_id     BIGINT NOT NULL REFERENCES students(telegram_id) ON DELETE CASCADE,
+    telegram_id     BIGINT UNIQUE NOT NULL REFERENCES students(telegram_id) ON DELETE CASCADE,
 
     -- Histórico de mensagens como JSONB (compatível com formato OpenAI)
     chat_history    JSONB NOT NULL DEFAULT '[]'::jsonb,
