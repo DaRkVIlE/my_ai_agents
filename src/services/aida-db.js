@@ -238,11 +238,11 @@ async function registerAcquisitionOccurrence(telegramId, estruturaTecnica, isEsp
                  ocorrencias_espontaneas = ocorrencias_espontaneas + 1,
                  ultima_ocorrencia = NOW(),
                  status = CASE 
-                     WHEN ocorrencias_espontaneas >= 2 THEN 'adquirida'
+                     WHEN ocorrencias_espontaneas + 1 >= 2 THEN 'adquirida'
                      ELSE 'em_processo'
                  END,
                  adquirida_em = CASE 
-                     WHEN ocorrencias_espontaneas >= 2 AND status != 'adquirida' THEN NOW()
+                     WHEN ocorrencias_espontaneas + 1 >= 2 AND status != 'adquirida' THEN NOW()
                      ELSE adquirida_em
                  END,
                  updated_at = NOW()
