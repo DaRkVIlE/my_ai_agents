@@ -142,11 +142,14 @@ async function startFirstScene(ctx, telegramId) {
         // Enviar texto
         await ctx.reply(cleanReply);
 
-        // Enviar voz (listening training) — não bloqueia se falhar
-        const voiceFile = await generateVoiceMessage(cleanReply, student.interesse);
-        if (voiceFile) {
-            await ctx.sendAudio({ source: createReadStream(voiceFile) });
-            cleanupTempFile(voiceFile);
+        // Enviar voz (listening training) — apenas se for inglês
+        const seemsPortuguese = /\b(não|você|que|para|com|como|mas|sim|então|aqui|uma|ele|ela|está|isso)\b/i.test(cleanReply);
+        if (!seemsPortuguese) {
+            const voiceFile = await generateVoiceMessage(cleanReply, student.interesse);
+            if (voiceFile) {
+                await ctx.sendAudio({ source: createReadStream(voiceFile) });
+                cleanupTempFile(voiceFile);
+            }
         }
     } catch (err) {
         console.error('[AIDA] Erro no icebreaker:', err.message);
@@ -290,15 +293,22 @@ aida.on('message', async (ctx) => {
         // Enviar texto
         await ctx.reply(cleanReply);
 
-        // Enviar voz para treino de listening (assíncrono, não bloqueia fluxo)
-        generateVoiceMessage(cleanReply, student.interesse)
-            .then(voiceFile => {
-                if (voiceFile) {
-                    return ctx.sendAudio({ source: createReadStream(voiceFile) })
-                        .then(() => cleanupTempFile(voiceFile));
-                }
-            })
-            .catch(err => console.error('[AIDA-TTS] Erro ao enviar voz:', err.message));
+        // Enviar voz para treino de listening apenas em modo imersao e se o texto for em inglês
+        if (student.modo_atual === 'imersao') {
+            // Heurística simples para evitar TTS lendo português com sotaque gringo
+            const seemsPortuguese = /\b(não|você|que|para|com|como|mas|sim|então|aqui|uma|ele|ela|está|isso)\b/i.test(cleanReply);
+            
+            if (!seemsPortuguese) {
+                generateVoiceMessage(cleanReply, student.interesse)
+                    .then(voiceFile => {
+                        if (voiceFile) {
+                            return ctx.sendAudio({ source: createReadStream(voiceFile) })
+                                .then(() => cleanupTempFile(voiceFile));
+                        }
+                    })
+                    .catch(err => console.error('[AIDA-TTS] Erro ao enviar voz:', err.message));
+            }
+        }
 
     } catch (err) {
         console.error('[AIDA] Erro crítico no handler:', err.message, err.stack);
