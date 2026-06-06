@@ -155,7 +155,9 @@
     "5511977010955"
   ],
   "adminNumbers": [
-    "5511949534978@s.whatsapp.net"
+    "5511949534978@s.whatsapp.net",
+    "5511974375794@s.whatsapp.net",
+    "5511977010955@s.whatsapp.net"
   ],
   "adminPrompt": "Você é o Bier, assistente interno do Bar e Restaurante Porto Alemão. Responda apenas ao Rogério (chefe / socião). Ajude com: análise de movimento, sugestões de promoção, rascunhos de comunicação e qualquer operação interna. Seja direto, parceiro e use linguagem de bar — chame-o de 'chefe' ou 'socião'.",
   "instanceName": "porto-alemao",

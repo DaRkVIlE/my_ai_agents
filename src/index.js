@@ -10,8 +10,8 @@ const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
-const BUILD_VERSION = '3.0.0';
-const BUILD_DATE = '2026-06-03T14:30:00Z';
+const BUILD_VERSION = '3.1.0';
+const BUILD_DATE = '2026-06-06T16:00:00Z';
 
 // Keywords que ativam o handoff humano
 const HANDOFF_KEYWORDS = [
@@ -303,4 +303,29 @@ app.get('/version', (req, res) => res.json({ version: BUILD_VERSION, buildDate: 
 
 app.listen(PORT, () => {
     console.log(`🚀 KAIROS Commercial Bots v${BUILD_VERSION} running on port ${PORT}`);
+
+    // ── AIDA Telegram Bot ───────────────────────────────────────────────────
+    if (process.env.AIDA_TELEGRAM_TOKEN) {
+        try {
+            const { aida, getAidaBotInfo } = require('./services/aida-telegram');
+            aida.launch({ dropPendingUpdates: true })
+                .then(() => getAidaBotInfo())
+                .then(info => {
+                    if (info.ok) {
+                        console.log(`🤖 AIDA Bot ativo: @${info.username} (ID: ${info.id})`);
+                    }
+                })
+                .catch(err => {
+                    console.error('[AIDA] Falha ao iniciar bot Telegram:', err.message);
+                });
+
+            // Graceful shutdown do Telegram
+            process.once('SIGINT', () => aida.stop('SIGINT'));
+            process.once('SIGTERM', () => aida.stop('SIGTERM'));
+        } catch (err) {
+            console.error('[AIDA] Erro ao carregar módulo do bot:', err.message);
+        }
+    } else {
+        console.warn('[AIDA] AIDA_TELEGRAM_TOKEN não definido — bot Telegram não iniciado.');
+    }
 });

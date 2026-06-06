@@ -8,8 +8,8 @@
     "telefone": "(11) 4546-7054 (WhatsApp)",
     "pix": {
       "tipo": "CNPJ",
-      "chave": "Solicitar ao atendente humano — nunca divulgar no WhatsApp",
-      "instrucao_bot": "Quando solicitado o PIX, informe: 'Para pagamentos via Pix, nossa equipe te envia os dados no momento da confirmação. Preferimos garantir a segurança das suas informações! 🔒'"
+      "chave": "00.000.000/0001-00 (Chave PIX Fictícia - Teste)",
+      "instrucao_bot": "Sempre que for necessário o pagamento da entrada de 30% (exclusividade de salão ou reservas específicas), calcule o valor e forneça automaticamente esta chave PIX. Informe: 'Para confirmarmos sua reserva, o pagamento da entrada de 30% (R$ [valor]) pode ser feito na nossa chave PIX CNPJ: 00.000.000/0001-00. Por favor, envie o comprovante por aqui assim que concluir! 🔒'"
     },
     "mapa": "https://maps.google.com/?q=Bistr%C3%B4+56+Mau%C3%A1+SP"
   },
