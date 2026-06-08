@@ -52,6 +52,28 @@ async function chatWithCerebras(messages, options, key) {
     return response.data.choices[0].message.content;
 }
 
+async function chatWithOpenRouter(messages, options, key) {
+    const response = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+            model: options.model || 'meta-llama/llama-4-scout-17b-16e-instruct',
+            messages,
+            temperature: options.temperature ?? 0.5,
+            max_tokens: options.max_tokens || 300,
+        },
+        {
+            headers: { 
+                Authorization: `Bearer ${key}`, 
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://kairos-os.com',
+                'X-Title': 'KAIROS Bots'
+            },
+            timeout: 45000,
+        }
+    );
+    return response.data.choices[0].message.content;
+}
+
 async function chatWithGeminiREST(messages, options, key) {
     const contents = [];
     let systemInstruction = null;
@@ -128,24 +150,23 @@ async function chat(messages, options = {}) {
     );
 
     if (requiresVision) {
-        // Tenta primeiro com Llama 3.2 11B Vision (estável no Groq — o 90B está em preview instável)
-        console.log('[LLM] Imagem detectada. Tentando Groq Llama 3.2 11B Vision (estável)...');
-        const visionOptions11b = { ...options, model: 'llama-3.2-11b-vision-preview' };
-        const result11b = await tryProvider('groq', messages, visionOptions11b, chatWithGroq);
-        if (result11b) return result11b;
+        console.log('[LLM] Imagem detectada. Tentando OpenRouter (Llama 4 Scout 17B)...');
+        const resultScout = await tryProvider('openrouter', messages, { ...options, model: 'meta-llama/llama-4-scout-17b-16e-instruct' }, chatWithOpenRouter);
+        if (resultScout) return resultScout;
 
-        // Fallback: Llama 3.2 90B Vision (mais poderoso mas menos estável)
-        console.log('[LLM] 11B falhou. Tentando Groq Llama 3.2 90B Vision...');
-        const visionOptions90b = { ...options, model: 'llama-3.2-90b-vision-preview' };
-        const result90b = await tryProvider('groq', messages, visionOptions90b, chatWithGroq);
-        if (result90b) return result90b;
+        console.log('[LLM] Scout falhou. Tentando OpenRouter (Llama 4 Maverick 17B)...');
+        const resultMaverick = await tryProvider('openrouter', messages, { ...options, model: 'meta-llama/llama-4-maverick-17b-128e-instruct' }, chatWithOpenRouter);
+        if (resultMaverick) return resultMaverick;
 
-        // Fallback final: Gemini 2.0 Flash (multimodal robusto)
-        console.log('[LLM] Groq Vision esgotado. Acionando fallback Gemini 2.0 Flash...');
+        console.log('[LLM] Maverick falhou. Tentando OpenRouter (Qwen 2.5 VL 72B)...');
+        const resultQwen = await tryProvider('openrouter', messages, { ...options, model: 'qwen/qwen2.5-vl-72b-instruct' }, chatWithOpenRouter);
+        if (resultQwen) return resultQwen;
+
+        console.log('[LLM] OpenRouter esgotado. Acionando fallback final Gemini 2.0 Flash...');
         const geminiResult = await tryProvider('gemini', messages, options, chatWithGeminiREST);
         if (geminiResult) return geminiResult;
 
-        throw new Error('Todos os providers de Visão falharam (Groq 11B + 90B + Gemini 2.0 Flash).');
+        throw new Error('Todos os providers de Visão falharam (OpenRouter Scout/Maverick/Qwen + Gemini 2.0 Flash).');
     }
 
     // Cascata Principal
