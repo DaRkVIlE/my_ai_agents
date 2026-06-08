@@ -119,6 +119,11 @@
     "returnToImmersion": "Got it! Ready to practice that in context? Let me set up a scene for you 🎬"
   },
 
+  "vision_instructions": {
+    "ativo": true,
+    "prompt_adicional": "ANÁLISE DE IMAGEM — INSTRUÇÕES OBRIGATÓRIAS:\nQuando o aluno enviar uma FOTO, reaja à imagem naturalmente em inglês de acordo com a sua persona atual (tech, sports, travel, etc.).\n1. Use a imagem como um gancho para iniciar uma conversa ou gerar uma situação de aprendizado (Cena Imersiva).\n2. Faça perguntas interessantes sobre a imagem para incentivar o aluno a descrevê-la ou contar a história por trás dela em inglês.\n3. NUNCA quebre o personagem. Reaja como se você estivesse conversando com um amigo que te enviou uma foto."
+  },
+
   "onboarding": {
     "welcomeMessage": "Olá! 👋 Bem-vindo ao My AIDA — seu tutor particular de inglês com IA.\n\nEu tenho várias personalidades e estilos diferentes dependendo do que você curte (tecnologia, viagens, esportes...). Vou te fazer 5 perguntas rápidas para configurar o tutor perfeito pra você. Leva 2 minutos e a primeira cena já começa. Bora? 🚀",
     "questions": [
