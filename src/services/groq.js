@@ -134,12 +134,17 @@ function getAttendantPrompt(config, dynamicRules = []) {
     // Extrai apenas as chaves de conhecimento de negócio (exclui credenciais e metadados de sistema)
     const {
         name, tone, services, targetAudience, attendant, instanceName, instanceApiKey,
-        testMode, testAllowedNumbers, adminNumbers, adminPrompt, examples, notificacao_reserva, ...businessRules
+        testMode, testAllowedNumbers, adminNumbers, adminPrompt, examples, notificacao_reserva, vision_instructions, ...businessRules
     } = config;
 
     // Injeta a instrução do marcador de reserva se o sistema estiver ativo
     const reservaInstruction = notificacao_reserva?.ativo && notificacao_reserva?.instrucao_llm
         ? `\n7. ${notificacao_reserva.instrucao_llm}`
+        : '';
+        
+    // Injeta instruções de visão computacional se existirem
+    const visionInstruction = vision_instructions?.ativo && vision_instructions?.prompt_adicional
+        ? `\n\n👁️ INSTRUÇÕES DE ANÁLISE DE IMAGEM:\n${vision_instructions.prompt_adicional}`
         : '';
 
     // Injeta regras dinâmicas da gerência (se houver)
@@ -163,7 +168,7 @@ ${JSON.stringify(config.examples || config.attendant?.examples || [], null, 2)}
 3. A saudação inicial JÁ FOI ENVIADA para o cliente. Portanto, NUNCA inicie suas respostas com saudações (ex: "Olá", "Boa tarde", "Seja bem vindo").
 4. Vá direto ao ponto e responda DIRETAMENTE à pergunta ou comentário do usuário.
 5. Se o usuário mandar um áudio (aparecerá como [ÁUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.
-6. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.${reservaInstruction}${dynamicBlock}`;
+6. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.${reservaInstruction}${visionInstruction}${dynamicBlock}`;
 }
 
 async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false, imageBase64 = null) {
@@ -282,7 +287,14 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
 
         return { text: reply, greeting: greetingToSend };
     } catch (error) {
-        console.error(`[generateResponse - ${clientId}]`, error.message);
+        console.error(`[generateResponse - ${clientId}] Erro no pipeline LLM:`, error.message);
+        
+        // Se era uma mensagem com imagem, dar feedback mais específico
+        if (imageBase64) {
+            console.error(`[generateResponse - ${clientId}] Falha no pipeline de Visão. Provider de visão esgotado.`);
+            return { text: 'Não consegui analisar a imagem agora. Pode descrever o que a foto mostra? Assim consigo te ajudar melhor! 🙏', greeting: null };
+        }
+        
         return { text: 'Desculpe, estou com uma instabilidade no momento. Pode tentar em breve?', greeting: null };
     }
 }
@@ -373,7 +385,7 @@ async function transcribeAudio(base64Audio) {
                     else if (ext === 'mp3') mimeType = 'audio/mp3';
                     else if (ext === 'wav') mimeType = 'audio/wav';
 
-                    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${currentGeminiKey}`;
+                    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${currentGeminiKey}`;
                     const response = await axios.post(geminiUrl, {
                         contents: [{
                             parts: [

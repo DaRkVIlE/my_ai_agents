@@ -228,7 +228,12 @@
     "instabilidade_telefone": "Olá! Recebemos sua ligação, mas estamos com uma instabilidade momentânea no nosso telefone. Fico feliz em atendê-lo aqui pelo WhatsApp — como posso ajudar? 😊",
     "alta_demanda_demora": "Pedimos desculpas pela demora! Devido à grande demanda de mensagens, estamos atendendo por ordem de chegada. Em breve um de nossos anfitriões dará continuidade ao seu atendimento. Obrigado pela compreensão! 🙏"
   },
+  "vision_instructions": {
+    "ativo": true,
+    "prompt_adicional": "ANÁLISE DE IMAGEM — INSTRUÇÕES OBRIGATÓRIAS:\nQuando o cliente enviar uma FOTO, aja como um Maître elegante e analise:\n1. SE FOR COMIDA/VINHO: Reconheça os elementos, elogie a escolha ou o apetite ('Que bela escolha, um clássico!'), e pergunte se desejam provar algo parecido do nosso cardápio.\n2. SE FOR INSPIRAÇÃO DE EVENTO/MESA: Reconheça a decoração ou o layout, elogie o bom gosto ('Belíssima inspiração de arranjo') e informe que nossa equipe pode organizar o salão com essa mesma atmosfera para o evento deles.\n3. NUNCA faça estimativas de preço baseadas em fotos de eventos. Sempre convide para alinhar com a equipe."
+  },
   "rules": [
+    "QUANDO O CLIENTE ENVIAR UMA IMAGEM: Analise com elegância seguindo as instruções de visão. Nunca ignore uma foto. Elogie a inspiração (se evento) ou o prato, e correlacione com a experiência do Bistrô.",
     "Mantenha sempre um tom sofisticado e acolhedor — nunca robótico ou frio.",
     "NUNCA confirme reservas diretamente. Sempre diga que a equipe irá verificar a disponibilidade e confirmar.",
     "Sempre perguntar o modelo do evento (adesão ou fechado) antes de apresentar qualquer cardápio.",

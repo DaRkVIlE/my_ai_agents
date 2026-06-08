@@ -69,9 +69,13 @@ async function chatWithGeminiREST(messages, options, key) {
             for (const c of msg.content) {
                 if (c.type === 'text') parts.push({ text: c.text });
                 if (c.type === 'image_url') {
-                    const match = c.image_url.url.match(/^data:(image\/\w+);base64,(.+)$/);
+                    // Usa flag 's' (dotAll) para capturar base64 com quebras de linha
+                    const match = c.image_url.url.match(/^data:(image\/[\w.+-]+)(?:;[^,]+)*;base64,([\s\S]+)$/);
                     if (match) {
-                        parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+                        // Remove whitespace/newlines do base64 antes de enviar
+                        parts.push({ inlineData: { mimeType: match[1], data: match[2].replace(/\s/g, '') } });
+                    } else {
+                        console.warn('[GeminiREST] Formato de data URL inválido ou não reconhecido:', c.image_url.url.substring(0, 80));
                     }
                 }
             }
@@ -84,10 +88,12 @@ async function chatWithGeminiREST(messages, options, key) {
     const payload = { contents };
     if (systemInstruction) payload.systemInstruction = systemInstruction;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
-    const response = await axios.post(url, payload, { timeout: 30000 });
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
+    const response = await axios.post(url, payload, { timeout: 45000 });
     
-    return response.data.candidates[0].content.parts[0].text;
+    const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('Gemini retornou resposta vazia ou sem candidatos');
+    return text;
 }
 
 /**
@@ -122,16 +128,24 @@ async function chat(messages, options = {}) {
     );
 
     if (requiresVision) {
-        console.log('[LLM] Imagem detectada. Tentando visão no Groq (Llama 3.2 Vision)...');
-        options.model = 'llama-3.2-11b-vision-preview';
-        const result = await tryProvider('groq', messages, options, chatWithGroq);
-        if (result) return result;
-        
-        console.log('[LLM] Groq Vision falhou. Acionando fallback Gemini 1.5 Flash Vision...');
+        // Tenta primeiro com Llama 3.2 11B Vision (estável no Groq — o 90B está em preview instável)
+        console.log('[LLM] Imagem detectada. Tentando Groq Llama 3.2 11B Vision (estável)...');
+        const visionOptions11b = { ...options, model: 'llama-3.2-11b-vision-preview' };
+        const result11b = await tryProvider('groq', messages, visionOptions11b, chatWithGroq);
+        if (result11b) return result11b;
+
+        // Fallback: Llama 3.2 90B Vision (mais poderoso mas menos estável)
+        console.log('[LLM] 11B falhou. Tentando Groq Llama 3.2 90B Vision...');
+        const visionOptions90b = { ...options, model: 'llama-3.2-90b-vision-preview' };
+        const result90b = await tryProvider('groq', messages, visionOptions90b, chatWithGroq);
+        if (result90b) return result90b;
+
+        // Fallback final: Gemini 2.0 Flash (multimodal robusto)
+        console.log('[LLM] Groq Vision esgotado. Acionando fallback Gemini 2.0 Flash...');
         const geminiResult = await tryProvider('gemini', messages, options, chatWithGeminiREST);
         if (geminiResult) return geminiResult;
 
-        throw new Error('Fallback massivo falhou para Visão Computacional.');
+        throw new Error('Todos os providers de Visão falharam (Groq 11B + 90B + Gemini 2.0 Flash).');
     }
 
     // Cascata Principal
