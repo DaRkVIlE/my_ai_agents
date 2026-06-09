@@ -112,18 +112,28 @@ async function handleDynamicRuleCommand(clientId, userMessage) {
     }
 
     // ── Atalhos sem colchete (mais fácil no celular) ──────────────────────
-    // !regra texto ou !termo texto → equivale a [REGRA] texto
-    // !regras             → equivale a [REGRAS]
-    // !limpar             → equivale a [LIMPAR REGRAS]
-    // !remover N          → equivale a [REMOVER REGRA] N
+    // Aceita variações naturais que o gestor digitaria no celular:
+    //   !regra <texto>                    → adicionar regra
+    //   !regras / !listar / !ver regras   → listar regras
+    //   !limpar / !limpar regras / !apagar → limpar todas
+    //   !remover N / !remover regra N     → remover específica
+
+    // ADICIONAR: !regra <texto> ou !termo <texto>
     const aliasAdd = msg.match(/^!(?:regra|termo)\s+(.+)/is);
     if (aliasAdd) return handleDynamicRuleCommand(clientId, `[REGRA] ${aliasAdd[1].trim()}`);
 
-    if (/^!(?:regras|termos)$/i.test(msg)) return handleDynamicRuleCommand(clientId, '[REGRAS]');
+    // LISTAR: !regras, !listar, !listar regras, !ver regras, !mostrar regras
+    if (/^!(?:regras|termos|listar(?:\s+regras?)?|ver(?:\s+regras?)?|mostrar(?:\s+regras?)?)$/i.test(msg)) {
+        return handleDynamicRuleCommand(clientId, '[REGRAS]');
+    }
 
-    if (/^!limpar$/i.test(msg)) return handleDynamicRuleCommand(clientId, '[LIMPAR REGRAS]');
+    // LIMPAR: !limpar, !limpar regras, !apagar, !apagar regras, !resetar
+    if (/^!(?:limpar|apagar|resetar)(?:\s+(?:regras?|tudo))?$/i.test(msg)) {
+        return handleDynamicRuleCommand(clientId, '[LIMPAR REGRAS]');
+    }
 
-    const aliasRemove = msg.match(/^!remover\s+(\d+)/i);
+    // REMOVER: !remover N, !remover regra N, !deletar N
+    const aliasRemove = msg.match(/^!(?:remover|deletar)(?:\s+regra)?\s+(\d+)/i);
     if (aliasRemove) return handleDynamicRuleCommand(clientId, `[REMOVER REGRA] ${aliasRemove[1]}`);
 
     // Não é um comando de regra dinâmica
