@@ -241,7 +241,8 @@ async function handleWebhook(req, res) {
         if (!isAdmin && detectHandoff(text)) {
             console.log(`[Handoff] Keyword detectada de ${remoteJid}`);
             await pauseSession(clientId, remoteJid);
-            await notifyAdmin(clientId, config, remoteJid);
+            // Notificação desativada — a conversa fica como "não respondida" no WhatsApp do gestor
+            console.log(`[Handoff] Sessão pausada para ${remoteJid} — aguardando atendimento humano (sem notificação ativa)`);
             await sendMessage(
                 clientId,
                 remoteJid,
