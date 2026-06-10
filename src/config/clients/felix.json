@@ -88,7 +88,7 @@
     "instabilidade_telefone": "Olá! Tive um problema com o telefone agora, mas posso te atender aqui pelo WhatsApp normalmente 📱 O que aconteceu com o seu aparelho?",
     "alta_demanda": "Estamos com bastante volume agora! Mas já vi sua mensagem — o Felix retorna com mais detalhes em breve. Obrigada pela paciência! 🛠️"
   },
-  "testMode": true,
+  "testMode": false,
   "testAllowedNumbers": [
     "5511977010955",
     "5511988895317"
