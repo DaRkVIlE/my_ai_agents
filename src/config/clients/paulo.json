@@ -140,7 +140,7 @@
   },
   "instanceName": "paulo api",
   "instanceApiKey": "37798307F30E-48DB-A08B-37D46EBCDB43",
-  "testMode": true,
+  "testMode": false,
   "testAllowedNumbers": [
     "5511977010955"
   ],
