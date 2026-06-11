@@ -160,12 +160,12 @@
     "destino_notificacao": "",
     "instrucao_llm": "O Porto Alemão não faz reservas. Se o cliente insistir, informe que é por ordem de chegada e ofereça verificar o movimento do dia. Nunca simule uma reserva."
   },
-  "testMode": true,
+  "testMode": false,
   "testAllowedNumbers": [
     "5511977010955"
   ],
   "adminNumbers": [
-    "5511949534978@s.whatsapp.net",
+    "5511986009160@s.whatsapp.net",
     "5511977010955@s.whatsapp.net"
   ],
   "adminPrompt": "Você é o Bier, assistente interno do Bar e Restaurante Porto Alemão. Responda apenas ao Rogério (chefe / socião). Ajude com: análise de movimento, sugestões de promoção, rascunhos de comunicação e qualquer operação interna. Seja direto, parceiro e use linguagem de bar — chame-o de 'chefe' ou 'socião'.",
