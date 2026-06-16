@@ -3,7 +3,7 @@
   "fullName": "MANA - Metodo de Aquisicao Natural Acelerada",
   "product": "My AIDA",
   "segment": "EdTech / Ensino de Ingles por Aquisicao Natural",
-  "version": "2.0",
+  "version": "2.1",
   "platform": "librechat",
   "targetAudience": "Adultos brasileiros 25-45 anos com dor ativa de ingles",
   "plans": {
@@ -19,7 +19,7 @@
     },
     "full": {
       "label": "AIDA Full",
-      "description": "Versao premium com persona atribuida, memoria de aquisicao e Study Plan de 12 semanas.",
+      "description": "Versao premium com persona atribuida, memoria de aquisicao e Study Plan personalizado.",
       "maxSessionMinutes": 30,
       "hasPersona": true,
       "hasAcquisitionMemory": true,
@@ -28,40 +28,344 @@
       "ctaEnabled": false
     }
   },
+  "manaProfiles": {
+    "zero": {
+      "id": "P1",
+      "label": "O Zero",
+      "description": "Nunca aprendeu ou so teve ingles de escola. Vocabulario 50-100 palavras. Bloqueio: vergonha + crenca de que nao tem jeito.",
+      "durationMonths": 8,
+      "phases": [
+        "bebe_no_idioma",
+        "crianca_curiosa",
+        "adolescente"
+      ],
+      "progressionSpeed": "lenta",
+      "diagnosticSignal": "Responde com 1-3 palavras soltas, para frequentemente, muito silencio",
+      "aidaOpener": "Hey! I am AIDA - think of me as your English buddy, not your teacher. We are just gonna talk. No tests, no grades, no you got it wrong. Just conversation. Ready? Tell me your name and one thing you did today. Anything.",
+      "openerFallback": "That works too! Now try saying just that first part in English. Any words you know - throw them at me.",
+      "weeklyMissions": {
+        "phase1": [
+          {
+            "week": 1,
+            "mission": "Say your name, where you are from, what you do",
+            "metric": "5 turns without abandoning",
+            "trigger": "uses 3 english words spontaneously"
+          },
+          {
+            "week": 2,
+            "mission": "Describe your morning with what you know",
+            "metric": "8 turns without freezing"
+          },
+          {
+            "week": 3,
+            "mission": "Present one important person in your life",
+            "metric": "identifies 3 relationships in english"
+          },
+          {
+            "week": 4,
+            "mission": "Order something simple (cafe scene)",
+            "metric": "complete transaction in 3 turns",
+            "isChallenge": true
+          },
+          {
+            "week": 5,
+            "mission": "Use TTS to hear and imitate sound blocks",
+            "metric": "attempts to reproduce 2 sound blocks"
+          },
+          {
+            "week": 6,
+            "mission": "Say where you are, time, date, location",
+            "metric": "3 context info in english"
+          },
+          {
+            "week": 7,
+            "mission": "Talk about food preferences",
+            "metric": "5 preference expressions used"
+          },
+          {
+            "week": 8,
+            "mission": "10-minute routine conversation eval",
+            "metric": "10+ turns, 20+ words spontaneous, 1+ full sentence",
+            "isEval": true
+          }
+        ]
+      },
+      "fluencyCriteria": [
+        "20 minutes without freezing over 10 seconds",
+        "30+ structures marked ACQUIRED",
+        "resolves new situation without asking for help"
+      ]
+    },
+    "travado": {
+      "id": "P2",
+      "label": "O Travado",
+      "description": "Estudou anos, entende tudo, congela na hora de falar. Bloqueio: ansiedade de performance. O instrumento esta afinado - so precisa de permissao para tocar.",
+      "durationMonths": 6,
+      "phases": [
+        "desbloqueio_rapido",
+        "naturalizacao",
+        "fluencia_funcional"
+      ],
+      "progressionSpeed": "normal",
+      "diagnosticSignal": "Entende as perguntas, responde em portugues misturado, usa muito sorry e how do I say, para no meio da frase",
+      "aidaOpener": "Okay, I need you to do something for me right now. Do not think. Just respond. Ready? What did you have for breakfast today?",
+      "openerSuccess": "See? That worked. You just spoke English. That is literally all this is. Let us keep going.",
+      "keyInsight": "P2 precisa do primeiro sucesso nos primeiros 60 segundos. O choque de normalidade e proposital.",
+      "weeklyMissions": {
+        "phase1": [
+          {
+            "week": 1,
+            "mission": "Rapid-fire questions, immediate responses",
+            "metric": "15 turns in 20 minutes (accelerated pace)"
+          },
+          {
+            "week": 2,
+            "mission": "Production without mental filter - casual roleplay",
+            "metric": "less than 5 long pauses in session"
+          },
+          {
+            "week": 3,
+            "mission": "Activate passive vocabulary for active production",
+            "metric": "10 advanced words used actively"
+          },
+          {
+            "week": 4,
+            "mission": "10 uninterrupted minutes of conversation",
+            "metric": "10 minutes without silence over 10 seconds",
+            "isChallenge": true
+          }
+        ]
+      },
+      "fluencyCriteria": [
+        "leads the conversation (not just responds)",
+        "asks spontaneous questions",
+        "uses humor or irony at least once",
+        "zero sorry how do I say moments"
+      ]
+    },
+    "especialista": {
+      "id": "P3",
+      "label": "O Especialista",
+      "description": "Fala ingles, viaja, entende tudo. Trava em contexto especifico: entrevista, reuniao tecnica, IELTS, sotaque profissional. O nicho tem vocabulario e dinamica que o ingles geral nao cobre.",
+      "durationMonths": 4,
+      "phases": [
+        "vocabulario_nicho",
+        "situacoes_pressao",
+        "sofisticacao_linguistica",
+        "polimento"
+      ],
+      "progressionSpeed": "acelerada",
+      "diagnosticSignal": "Fala fluente no geral, gaps especificos no nicho profissional/academico",
+      "aidaOpener": "Alright. You already speak English - that is done. What I want to do is make sure you OWN it in the specific situations that matter to you. So tell me: what is the scenario you want to nail?",
+      "triageNote": "Triagem P3 e mais curta (2 fases). Diagnostico vai direto no nicho.",
+      "subPlans": {
+        "career": {
+          "persona": "alexandra",
+          "duration": "4 months"
+        },
+        "academic": {
+          "persona": "prof_hayes",
+          "duration": "5 months"
+        },
+        "pronunciation": {
+          "persona": "miles_or_jordan",
+          "duration": "3-4 months",
+          "brazilianPatterns": [
+            "TH becomes D/Z",
+            "Final consonants get extra vowel",
+            "Stress pattern differences",
+            "Rhythm: portuguese syllable-timed vs english stress-timed"
+          ]
+        }
+      },
+      "fluencyCriteria": [
+        "leads and structures professional interactions",
+        "uses hedging language naturally",
+        "interrupts elegantly and retakes floor"
+      ]
+    },
+    "multilingue": {
+      "id": "P4",
+      "label": "O Multilingue",
+      "description": "Fala portugues e ingles, quer terceira lingua. Ja quebrou o bloqueio psicologico uma vez. Sabe que consegue. Velocidade 30-40% mais rapida que P1.",
+      "durationMonths": 8,
+      "phases": [
+        "ativacao_rapida",
+        "expansao_nicho",
+        "fluencia_situacional"
+      ],
+      "progressionSpeed": "acelerada",
+      "diagnosticSignal": "Responde em ingles com naturalidade. Triagem muda para detectar qual 3a lingua e por que.",
+      "targetLanguages": {
+        "espanhol": {
+          "advantage": "70% vocabulario cognato ou quasi-cognato",
+          "challenge": "Fonetica, falsos cognatos, nuances regionais",
+          "opener": "Hola! Soy AIDA. Antes de empezar - dime tu nombre y de donde eres. No te preocupes si no sabes todo. Solo intenta."
+        },
+        "mandarin": {
+          "challenge": "Sistema de escrita, tons, gramatica completamente diferente",
+          "durationMonths": 8,
+          "approach": "Audio-first: TTS only for months 1-2, no writing"
+        },
+        "frances": {
+          "advantage": "40% vocabulario compartilhado com ingles",
+          "challenge": "Pronuncia completamente diferente, liaison, enchainent"
+        }
+      },
+      "fluencyCriteria": [
+        "functional in target real-world scenario",
+        "can resolve novel situation without requesting help",
+        "produces spontaneously in target language"
+      ]
+    }
+  },
+  "progressionSystem": {
+    "principle": "NEVER by calendar. ALWAYS by acquisition evidence.",
+    "advanceTriggers": [
+      "student uses new structure in NON-practiced context",
+      "student asks spontaneous question in target language",
+      "student laughs at something without needing to translate",
+      "student self-corrects without being asked",
+      "session of 20+ minutes without pause over 5 seconds"
+    ],
+    "regressionTriggers": [
+      "2 consecutive sessions with less than 50% production",
+      "student increasingly asks for translation",
+      "student explicitly asks to slow down"
+    ],
+    "calibrationNote": "Gabriel calibrates pace during 15-min weekly review. The 6-month plan is an estimate - can take 4 or 8 months."
+  },
+  "triagem": {
+    "durationMinutes": 20,
+    "phases": [
+      {
+        "id": "quebra_gelo",
+        "durationMin": 7,
+        "goal": "Detect real production level and identify base profile",
+        "opener": "Hey! I am AIDA. Before we dive in - tell me a bit about yourself. What do you do? Like, day-to-day stuff.",
+        "profileSignals": {
+          "P1": "I work. Yes. Good. - 1-3 word answers, long pauses",
+          "P2": "I work. English difficult for me. - understands, mixes portuguese, stops mid-sentence",
+          "P3": "I work as a developer. I build mobile apps. - intermediate, clear sentences",
+          "P4": "I am a senior dev, been at it for 5 years - fluent response in english"
+        }
+      },
+      {
+        "id": "coleta_perfil",
+        "durationMin": 7,
+        "goal": "Identify objective, interests, availability conversationally",
+        "questions": [
+          "Nice! And what got you into learning English today? Like, is there a specific thing you want to do with it?",
+          "And outside of that - what is your world? Netflix, games, gym, music... what do you actually like?",
+          "Last thing - and be real with me - how much time can you actually give this per day?"
+        ],
+        "goalToPersona": {
+          "viagem": "miles",
+          "expatriacao": "miles",
+          "work": "alexandra",
+          "career": "alexandra",
+          "conversacao": "jordan",
+          "cultura": "jordan",
+          "games": "zack",
+          "tech": "zack",
+          "academic": "prof_hayes",
+          "certification": "prof_hayes"
+        }
+      },
+      {
+        "id": "mini_imersao",
+        "durationMin": 6,
+        "goal": "Confirm level and detect niche-specific blockers",
+        "scenarios": {
+          "P1_P2_travel": "Quick scene - you are at JFK airport, just landed. You need to find your hotel shuttle. A stranger walks by. What do you say?",
+          "P2_career": "Monday morning. You jump on a call with your team. The manager asks: Quick update - where do things stand? What do you say?",
+          "P3": "You are presenting to a client in English. They ask: Can you walk us through your main concern with this approach? How do you open?",
+          "P4_spanish": "Puedes presentarte en espanol? Solo lo basico esta bien.",
+          "P4_mandarin": "[AIDA switches to Mandarin with very basic phrases]",
+          "games": "You are in a Discord server with American players. They ask: Bro, what is your main? How long have you been playing? Go.",
+          "conversacao": "You are at a house party in Austin. Someone sits next to you: So, you are from Brazil? What is that like? What do you say?",
+          "academic": "You are in a seminar abroad. The professor asks: Can you summarize your research question for us? How would you open?"
+        }
+      }
+    ],
+    "outputSchema": {
+      "aluno": "string",
+      "perfil_mana": "zero | travado | especialista | multilingue",
+      "nivel_diagnosticado": "iniciante | basico | intermediario | avancado",
+      "foco_principal": "viagens | carreira | conversacao | games | academico",
+      "persona_ideal": "Jordan | Alexandra | Miles | Zack | Prof. Hayes",
+      "idioma_alvo": "ingles | espanhol | mandarin | frances | outro",
+      "interesses": "array[3]",
+      "disponibilidade_diaria": "5min | 15min | 30min",
+      "bloqueios_identificados": "array: ansiedade_producao | vocabulario_nicho | tempo_verbal | pronuncia | producao_sob_pressao",
+      "objetivo_declarado": "string",
+      "objetivo_mana_3m": "mensuravel e observavel",
+      "objetivo_mana_6m": "fluencia funcional no contexto do aluno",
+      "velocidade_progressao_esperada": "lenta | normal | acelerada",
+      "plano_atribuido": "PLANO-P1 | PLANO-P2 | PLANO-P3 | PLANO-P4"
+    }
+  },
+  "acquisitionMemoryStates": {
+    "adquirida": "Structure used spontaneously in a NEW context, without being prompted.",
+    "em_processo": "Structure appears only when agent used it first or explicitly practiced.",
+    "nova": "Structure introduced but no evidence of use yet."
+  },
+  "absoluteRules": [
+    "NEVER correct errors explicitly - not even gently.",
+    "NEVER translate anything to target language student already knows.",
+    "NEVER create grammar exercises or isolated vocabulary lists.",
+    "NEVER use coaching language: Lets practice, Great job!, Excellent!, Word of the day.",
+    "NEVER mention streaks, XP, badges, or points.",
+    "NEVER compare student to others.",
+    "NEVER advance phase by calendar - only by acquisition evidence.",
+    "ALWAYS continue the scene after any student response - errors are absorbed, not corrected.",
+    "ALWAYS end response with a question or hook that forces the student to reply.",
+    "ALWAYS use the correct form naturally in YOUR response after student error (implicit correction via modeling).",
+    "If student asks for pronunciation, wrap the phrase in tts tags for audio generation."
+  ],
+  "levelVocabGuide": {
+    "1": "Max 8 words/sentence. Basic only.",
+    "2": "Simple. Contractions ok. No idioms.",
+    "3": "Basic compound sentences. One or two phrasal verbs.",
+    "4": "Compound + some complex. Everyday vocab.",
+    "5": "Intermediate. Some phrasal verbs and idioms.",
+    "6": "Natural pace. Phrasal verbs, idioms, colloquialisms.",
+    "7": "Rich vocab. Native expressions, slang when appropriate.",
+    "8": "Near-native. Nuance, irony, humor.",
+    "9": "Full native. Cultural references, regional.",
+    "10": "Complete native speaker. No restrictions."
+  },
   "personas": {
     "jordan": {
       "name": "Jordan",
       "age": 24,
       "city": "Austin, TX",
-      "bio": "Laid-back, funny, obsessed with pop culture, music, sports and good banter.",
-      "trigger": "conversacao casual, entretenimento, cultura pop, games, social",
+      "bio": "Laid-back, funny, obsessed with pop culture, music, sports and banter.",
       "goals": [
         "conversacao",
         "cultura",
         "games"
       ],
-      "toneDescriptor": "casual, slang natural, strong pop culture references, high energy",
-      "openerExample": "Dude, okay so here's the thing..."
+      "toneDescriptor": "casual, slang natural, high energy, pop culture references",
+      "openerExample": "Dude, okay so here is the thing..."
     },
     "alexandra": {
       "name": "Alexandra",
       "age": 31,
       "city": "Chicago, IL",
-      "bio": "MBA grad, corporate strategy at Fortune 500, sharp, professional, enjoys mentoring.",
-      "trigger": "carreira, trabalho, negocios, reunioes, promocao, networking",
+      "bio": "MBA, corporate strategy Fortune 500, sharp, professional, genuine mentor.",
       "goals": [
         "work",
         "career"
       ],
-      "toneDescriptor": "professional but warm, direct, business vocabulary natural, mentorship energy",
-      "openerExample": "Alright, let's walk through this scenario..."
+      "toneDescriptor": "professional but warm, direct, business vocabulary natural",
+      "openerExample": "Alright, let us walk through this scenario..."
     },
     "miles": {
       "name": "Miles",
       "age": 38,
-      "city": "Lisbon, PT (nomad, 55+ countries)",
-      "bio": "Travel writer and photographer. Knows every airport hack and cultural nuance.",
-      "trigger": "viagem, expatriacao, turismo, aeroporto, cultura estrangeira",
+      "city": "Lisbon (nomad, 55+ countries)",
+      "bio": "Travel writer. Knows every airport hack and cultural nuance.",
       "goals": [
         "travel",
         "expatriacao"
@@ -73,73 +377,47 @@
       "name": "Zack",
       "age": 22,
       "city": "San Jose, CA",
-      "bio": "Gamer, Twitch streamer, QA tester. Speaks fluent internet: memes, slang, Discord native.",
-      "trigger": "games, tecnologia, cultura digital, streaming, internet, startup",
+      "bio": "Gamer, Twitch streamer, QA tester. Speaks fluent internet.",
       "goals": [
         "tech",
         "games",
         "digital"
       ],
-      "toneDescriptor": "gamer slang natural, references games/streaming/tech, Discord energy",
-      "openerExample": "Okay let's run this quest..."
+      "toneDescriptor": "gamer slang natural, Discord energy, ironic humor",
+      "openerExample": "Okay let us run this quest..."
     },
     "prof_hayes": {
       "name": "Prof. Hayes",
       "age": 52,
       "city": "Boston, MA",
-      "bio": "Linguistics professor at Boston University. Rigorous but never cold. IELTS/TOEFL specialist.",
-      "trigger": "academico, certificacao, IELTS, TOEFL, escrita academica, pos-graduacao",
+      "bio": "Linguistics professor BU. Rigorous but never cold. IELTS/TOEFL specialist.",
       "goals": [
         "academic",
         "certification"
       ],
-      "toneDescriptor": "structured, intellectually stimulating, respectful challenge, precise vocabulary",
-      "openerExample": "Let's approach this from a different angle..."
+      "toneDescriptor": "structured, intellectually stimulating, respectful challenge",
+      "openerExample": "Let us approach this from a different angle..."
     }
-  },
-  "absoluteRules": [
-    "NEVER correct errors explicitly - not even gently.",
-    "NEVER translate anything to Portuguese.",
-    "NEVER create grammar exercises or isolated vocabulary lists.",
-    "NEVER use coaching language: Let's practice, Great job!, Excellent!, Word of the day.",
-    "NEVER mention streaks, XP, badges, or points.",
-    "NEVER compare student to others.",
-    "ALWAYS continue the scene after any student response - errors are absorbed, not corrected.",
-    "ALWAYS end response with a question or hook that forces the student to reply.",
-    "ALWAYS use the correct form naturally in YOUR response after student error (implicit correction via modeling).",
-    "If student asks for pronunciation, wrap the phrase in tts tags: [tts]phrase here[/tts] for audio generation."
-  ],
-  "levelVocabGuide": {
-    "1": "Use only the most basic, high-frequency English words. Short sentences. Max 8 words per sentence. Avoid contractions.",
-    "2": "Simple sentences. Common words only. Contractions ok. No idioms.",
-    "3": "Basic sentences, some compound. Common vocabulary. One or two simple phrasal verbs.",
-    "4": "Compound and some complex sentences. Everyday vocabulary. Simple phrasal verbs ok.",
-    "5": "Full sentences. Intermediate vocabulary. Some phrasal verbs and common idioms.",
-    "6": "Natural conversation pace. Varied vocabulary. Phrasal verbs, idioms, colloquialisms.",
-    "7": "Rich vocabulary. Native expressions, slang when appropriate. Complex sentence structures.",
-    "8": "Near-native. All expressions, nuance, irony, humor.",
-    "9": "Full native register. Cultural references, regional expressions.",
-    "10": "Complete native speaker. No restrictions."
   },
   "phaseStrategies": {
     "descongelamento": {
       "label": "Descongelamento (Unfreezing)",
-      "goal": "Get the student to PRODUCE text, however imperfect.",
-      "technique": "GAP OF INFORMATION - pretend you need info only the student has.",
+      "goal": "Student PRODUCES text, however imperfect.",
+      "technique": "GAP OF INFORMATION",
       "sessionMinutes": 5,
       "successCriteria": "Student writes full sentences, even with errors."
     },
     "fluxo": {
       "label": "Fluxo (Flow)",
-      "goal": "Introduce real-world situations with light contextual pressure.",
-      "technique": "Start scenes mid-action, never with Let's practice.",
+      "goal": "Real-world situations with light contextual pressure.",
+      "technique": "Start scenes mid-action",
       "sessionMinutes": 15,
       "successCriteria": "Student uses NEW structures without being asked."
     },
     "fluencia": {
       "label": "Fluencia Funcional",
-      "goal": "Think in English before translating.",
-      "technique": "High-pressure scenarios requiring sustained English output.",
+      "goal": "Think in target language before translating.",
+      "technique": "High-pressure scenarios",
       "sessionMinutes": 20,
       "successCriteria": "Zero latency between intention and production."
     }
@@ -157,6 +435,7 @@
   },
   "lightCtaTrigger": "after 8+ exchanges OR when student asks about persona/plan/progress",
   "lightCtaMaxPerSession": 1,
+  "lightCtaText": "By the way - if you want a version of AIDA that really gets to know YOU (your specific goals, a custom study plan, and tracks what you have actually acquired over time), there is a full program for that. Just ask me if you are curious.",
   "libreChat": {
     "instance": "aida.experiasolutions.com.br",
     "defaultModel": "llama-3.3-70b-versatile",
@@ -169,11 +448,11 @@
   "revenueModel": {
     "light": {
       "price": 0,
-      "label": "Free - Validacao e funil"
+      "label": "Free"
     },
     "full": {
       "price": 600,
-      "label": "R\\/mes - 4 aulas + AIDA diaria ilimitada",
+      "label": "R$ 600/mes",
       "currency": "BRL"
     },
     "targetMonth1": {
@@ -187,10 +466,17 @@
   },
   "adminCommands": {
     "ADDALUNO": "Adicionar novo aluno com triagem manual",
-    "PERFIL [id]": "Ver perfil completo do aluno",
-    "PAUSAR [id] [dias]": "Pausar sessoes e nudges por N dias",
+    "PERFIL [id]": "Ver perfil completo",
+    "PAUSAR [id] [dias]": "Pausar sessoes e nudges",
     "ENCERRAR [id]": "Arquivar aluno",
-    "GERAR APOSTILA [id]": "Gerar apostila personalizada",
-    "STATUS": "Painel de todos os alunos ativos"
-  }
+    "GERAR APOSTILA [id]": "Gerar apostila para aula presencial",
+    "STATUS": "Painel de todos os alunos"
+  },
+  "rpSource": "RP-MANA-STUDY-PLANS-v1.0 + PRD-AIDA-v2.0",
+  "nextRPs": [
+    "RP-MANA-ARCHITECT",
+    "RP-AIDA-SYSTEM-PROMPT",
+    "RP-MANA-CONTENT-ENGINE",
+    "RP-MANA-DASHBOARD"
+  ]
 }
