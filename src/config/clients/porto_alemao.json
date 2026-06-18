@@ -160,7 +160,7 @@
     "destino_notificacao": "",
     "instrucao_llm": "O Porto Alemão não faz reservas. Se o cliente insistir, informe que é por ordem de chegada e ofereça verificar o movimento do dia. Nunca simule uma reserva."
   },
-  "testMode": false,
+  "testMode": true,
   "testAllowedNumbers": [
     "5511977010955"
   ],
