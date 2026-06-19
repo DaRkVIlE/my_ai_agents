@@ -250,16 +250,50 @@ async function isBotOnStandby(clientId) {
     }
 }
 
+async function getOnboardingState(clientId, jid) {
+    const redis = getClient();
+    const key = `onboarding:${clientId}:${jid}`;
+    if (!redis) {
+        const val = inMemoryFallback.get(key);
+        return val ? JSON.parse(val) : null;
+    }
+    try {
+        const val = await redis.get(key);
+        return val ? JSON.parse(val) : null;
+    } catch (err) {
+        console.error('[Redis] getOnboardingState error:', err.message);
+        return null;
+    }
+}
+
+async function setOnboardingState(clientId, jid, state) {
+    const redis = getClient();
+    const key = `onboarding:${clientId}:${jid}`;
+    const serialized = JSON.stringify(state);
+    if (!redis) {
+        inMemoryFallback.set(key, serialized);
+        return;
+    }
+    try {
+        await redis.set(key, serialized, 'EX', SESSION_TTL);
+    } catch (err) {
+        console.error('[Redis] setOnboardingState error:', err.message);
+        inMemoryFallback.set(key, serialized);
+    }
+}
+
 module.exports = {
     getSession,
     setSession,
     clearSession,
+    isSessionPaused,
     pauseSession,
     resumeSession,
-    isSessionPaused,
     getDynamicRules,
     setDynamicRules,
     clearDynamicRules,
-    setBotStandby,
     isBotOnStandby,
+    setBotStandby,
+    getOnboardingState,
+    setOnboardingState
 };

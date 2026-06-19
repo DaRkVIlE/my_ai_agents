@@ -1,12 +1,16 @@
 {
   "name": "AIDA",
   "fullName": "Aquisição Imersiva Dinâmica Acelerada",
-  "platform": "telegram",
+  "platform": "whatsapp",
   "version": "1.0.0",
   "testMode": true,
-  "testAllowedTelegramIds": [],
+  "testAllowedNumbers": [
+    "5511977010955"
+  ],
 
-  "adminTelegramIds": [],
+  "adminNumbers": [
+    "5511977010955@s.whatsapp.net"
+  ],
 
   "method": {
     "name": "MANA",

@@ -140,7 +140,7 @@ async function handleDynamicRuleCommand(clientId, userMessage) {
     return null;
 }
 
-function getAttendantPrompt(config, dynamicRules = []) {
+function getAttendantPrompt(config, dynamicRules = [], userProfile = null) {
     // Extrai apenas as chaves de conhecimento de negócio (exclui credenciais e metadados de sistema)
     const {
         name, tone, services, targetAudience, attendant, instanceName, instanceApiKey,
@@ -162,6 +162,11 @@ function getAttendantPrompt(config, dynamicRules = []) {
         ? `\n\n⚠️ ATUALIZAÇÕES TEMPORÁRIAS DA GERÊNCIA (OBEDEÇA RIGOROSAMENTE):\n${dynamicRules.map(r => `- ${r}`).join('\n')}\nEstas instruções têm PRIORIDADE sobre o cardápio e regras padrão acima.`
         : '';
 
+    // Injeta Perfil do Aluno (se aplicável ao bot)
+    const profileBlock = userProfile
+        ? `\n\n👤 PERFIL DO ALUNO (USE PARA PERSONALIZAR A INTERAÇÃO):\n- Nível Reportado: ${userProfile.nivel || 'Desconhecido'}\n- Interesse/Tema: ${userProfile.interesse || 'Geral'}\n- Objetivo: ${userProfile.objetivo || 'Não informado'}\n- Tom Preferido: ${userProfile.tom || 'Neutro'}\n\n*INSTRUÇÃO CRÍTICA:* Incorpore o interesse principal e o objetivo do aluno sutilmente nas suas respostas e na criação das cenas. Adapte seu vocabulário para o nível reportado.`
+        : '';
+
     return `Você é o assistente virtual do negócio: ${config.name}.
 Tom de voz: ${config.tone}.
 Público Alvo: ${config.targetAudience || ''}.
@@ -178,10 +183,10 @@ ${JSON.stringify(config.examples || config.attendant?.examples || [], null, 2)}
 3. A saudação inicial JÁ FOI ENVIADA para o cliente. Portanto, NUNCA inicie suas respostas com saudações (ex: "Olá", "Boa tarde", "Seja bem vindo").
 4. Vá direto ao ponto e responda DIRETAMENTE à pergunta ou comentário do usuário.
 5. Se o usuário mandar um áudio (aparecerá como [ÁUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.
-6. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.${reservaInstruction}${visionInstruction}${dynamicBlock}`;
+6. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.${reservaInstruction}${visionInstruction}${dynamicBlock}${profileBlock}`;
 }
 
-async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false, imageBase64 = null) {
+async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false, imageBase64 = null, userProfile = null) {
     const lowerMsg = userMessage.toLowerCase();
 
     // ── INTERCEPTAÇÃO DE REGRAS DINÂMICAS (Admin only, antes de tudo) ─────
@@ -225,18 +230,18 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
 
     if (!chatHistory) {
         // Nova sessão
-        const systemPrompt = (isAdmin && config.adminPrompt) ? config.adminPrompt : getAttendantPrompt(config, dynamicRules);
+        const systemPrompt = (isAdmin && config.adminPrompt) ? config.adminPrompt : getAttendantPrompt(config, dynamicRules, userProfile);
         chatHistory = [{ role: 'system', content: systemPrompt }];
 
         // Pre-inject greeting as already-sent message so LLM doesn't repeat it
-        if (!isAdmin && config.attendant?.greeting) {
+        if (!isAdmin && config.attendant?.greeting && !userProfile) { // AIDA usa a completionMessage em vez de greeting padrão
             const greeting = applyTimeGreeting(config.attendant.greeting);
             chatHistory.push({ role: 'assistant', content: greeting });
             greetingToSend = greeting;
         }
-    } else if (!isAdmin && dynamicRules.length > 0) {
-        // Sessão existente — rebuild do system prompt com regras dinâmicas atualizadas
-        chatHistory[0] = { role: 'system', content: getAttendantPrompt(config, dynamicRules) };
+    } else if (!isAdmin && (dynamicRules.length > 0 || userProfile)) {
+        // Sessão existente — rebuild do system prompt com regras dinâmicas e/ou perfil de aluno atualizados
+        chatHistory[0] = { role: 'system', content: getAttendantPrompt(config, dynamicRules, userProfile) };
     }
 
     // Preparar conteúdo do usuário (suporte a Visão)

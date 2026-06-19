@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { generateResponse, transcribeAudio } = require('./services/groq');
 const { sendMessage, getMediaBase64 } = require('./services/evolution');
+const { handleOnboarding } = require('./services/onboarding');
 const { isSessionPaused, pauseSession, resumeSession, clearSession, isBotOnStandby, setBotStandby } = require('./services/redis');
 
 const app = express();
@@ -252,8 +253,27 @@ async function handleWebhook(req, res) {
             return res.status(200).send('Handoff triggered');
         }
 
+        // ── Onboarding State Machine ─────────────────────────────────────────
+        let userProfile = null;
+        if (!isAdmin && config.onboarding) {
+            const obResult = await handleOnboarding(clientId, config, remoteJid, text);
+            if (!obResult.isComplete || obResult.justCompleted) {
+                if (obResult.replyText) {
+                    await sendMessage(clientId, remoteJid, obResult.replyText, config);
+                }
+                if (!obResult.justCompleted) {
+                    return res.status(200).send('Onboarding step');
+                }
+                userProfile = obResult.profile;
+                // Deixa o fluxo seguir para o LLM gerar a primeira cena
+            } else if (obResult.isComplete && obResult.profile) {
+                userProfile = obResult.profile;
+            }
+        }
+
         // ── Gerar resposta via LLM ───────────────────────────────────────────
-        const responseObj = await generateResponse(clientId, config, remoteJid, text, isAdmin, imageBase64);
+        // Passando userProfile para o generateResponse (precisa atualizar a assinatura se necessário)
+        const responseObj = await generateResponse(clientId, config, remoteJid, text, isAdmin, imageBase64, userProfile);
         const replyText = typeof responseObj === 'string' ? responseObj : responseObj?.text;
         const greetingToSend = typeof responseObj === 'string' ? null : responseObj?.greeting;
 
@@ -304,29 +324,4 @@ app.get('/version', (req, res) => res.json({ version: BUILD_VERSION, buildDate: 
 
 app.listen(PORT, () => {
     console.log(`🚀 KAIROS Commercial Bots v${BUILD_VERSION} running on port ${PORT}`);
-
-    // ── AIDA Telegram Bot ───────────────────────────────────────────────────
-    if (process.env.AIDA_TELEGRAM_TOKEN) {
-        try {
-            const { aida, getAidaBotInfo } = require('./services/aida-telegram');
-            aida.launch({ dropPendingUpdates: true })
-                .then(() => getAidaBotInfo())
-                .then(info => {
-                    if (info.ok) {
-                        console.log(`🤖 AIDA Bot ativo: @${info.username} (ID: ${info.id})`);
-                    }
-                })
-                .catch(err => {
-                    console.error('[AIDA] Falha ao iniciar bot Telegram:', err.message);
-                });
-
-            // Graceful shutdown do Telegram
-            process.once('SIGINT', () => aida.stop('SIGINT'));
-            process.once('SIGTERM', () => aida.stop('SIGTERM'));
-        } catch (err) {
-            console.error('[AIDA] Erro ao carregar módulo do bot:', err.message);
-        }
-    } else {
-        console.warn('[AIDA] AIDA_TELEGRAM_TOKEN não definido — bot Telegram não iniciado.');
-    }
 });
