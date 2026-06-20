@@ -282,6 +282,60 @@ async function setOnboardingState(clientId, jid, state) {
     }
 }
 
+// ── INTERACTION LOG (AIDA) ───────────────────────────────────────────────────
+async function logInteraction(clientId, jid, entry) {
+    const redis = getClient();
+    const key = `log:${clientId}:${jid}`;
+    const LOG_TTL = 60 * 60 * 24 * 30; // 30 dias
+    try {
+        if (!redis) return;
+        const existing = await redis.get(key);
+        const log = existing ? JSON.parse(existing) : [];
+        log.push({ ...entry, ts: new Date().toISOString() });
+        if (log.length > 200) log.splice(0, log.length - 200);
+        await redis.set(key, JSON.stringify(log), 'EX', LOG_TTL);
+    } catch (err) {
+        console.error('[Redis] logInteraction error:', err.message);
+    }
+}
+
+async function getInteractionLog(clientId, jid) {
+    const redis = getClient();
+    const key = `log:${clientId}:${jid}`;
+    try {
+        if (!redis) return [];
+        const val = await redis.get(key);
+        return val ? JSON.parse(val) : [];
+    } catch (err) {
+        console.error('[Redis] getInteractionLog error:', err.message);
+        return [];
+    }
+}
+
+async function setLastActivity(clientId, jid) {
+    const redis = getClient();
+    const key = `lastactivity:${clientId}:${jid}`;
+    try {
+        if (!redis) { inMemoryFallback.set(key, Date.now().toString()); return; }
+        await redis.set(key, Date.now().toString(), 'EX', 3600);
+    } catch (err) {
+        console.error('[Redis] setLastActivity error:', err.message);
+    }
+}
+
+async function getLastActivity(clientId, jid) {
+    const redis = getClient();
+    const key = `lastactivity:${clientId}:${jid}`;
+    try {
+        if (!redis) { const v = inMemoryFallback.get(key); return v ? parseInt(v) : null; }
+        const val = await redis.get(key);
+        return val ? parseInt(val) : null;
+    } catch (err) {
+        console.error('[Redis] getLastActivity error:', err.message);
+        return null;
+    }
+}
+
 module.exports = {
     getSession,
     setSession,
@@ -295,5 +349,9 @@ module.exports = {
     isBotOnStandby,
     setBotStandby,
     getOnboardingState,
-    setOnboardingState
+    setOnboardingState,
+    logInteraction,
+    getInteractionLog,
+    setLastActivity,
+    getLastActivity
 };

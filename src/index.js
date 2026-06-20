@@ -6,6 +6,7 @@ const { generateResponse, transcribeAudio } = require('./services/groq');
 const { sendMessage, getMediaBase64 } = require('./services/evolution');
 const { handleOnboarding } = require('./services/onboarding');
 const { isSessionPaused, pauseSession, resumeSession, clearSession, isBotOnStandby, setBotStandby } = require('./services/redis');
+const { startAidaScheduler } = require('./services/aida-scheduler');
 
 const app = express();
 app.use(express.json());
@@ -324,4 +325,14 @@ app.get('/version', (req, res) => res.json({ version: BUILD_VERSION, buildDate: 
 
 app.listen(PORT, () => {
     console.log(`🚀 KAIROS Commercial Bots v${BUILD_VERSION} running on port ${PORT}`);
+    
+    // Iniciar Schedulers Específicos
+    try {
+        const aidaConfig = loadClientConfig('aida');
+        if (aidaConfig) {
+            startAidaScheduler(aidaConfig);
+        }
+    } catch (e) {
+        console.error('[Startup] Failed to start AIDA scheduler:', e.message);
+    }
 });

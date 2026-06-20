@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { chat } = require('./llm');
-const { getSession, setSession, getDynamicRules, setDynamicRules, clearDynamicRules } = require('./redis');
+const { getSession, setSession, getDynamicRules, setDynamicRules, clearDynamicRules, logInteraction, setLastActivity } = require('./redis');
+const { buildAidaSystemPrompt, buildImmersionOpeningPrompt, detectSessionEnd } = require('./aida-engine');
 const apiRouter = require('./apiRouter');
 
 const MAX_DYNAMIC_RULES = 10;
@@ -229,19 +230,45 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
     let greetingToSend = null;
 
     if (!chatHistory) {
-        // Nova sessão
-        const systemPrompt = (isAdmin && config.adminPrompt) ? config.adminPrompt : getAttendantPrompt(config, dynamicRules, userProfile);
+        // Nova sessão — verificar se é bot MANA (AIDA)
+        const isAida = config.method?.name === 'MANA';
+        let systemPrompt;
+        if (isAdmin && config.adminPrompt) {
+            systemPrompt = config.adminPrompt;
+        } else if (isAida && userProfile) {
+            systemPrompt = buildAidaSystemPrompt(config, userProfile);
+        } else {
+            systemPrompt = getAttendantPrompt(config, dynamicRules, userProfile);
+        }
         chatHistory = [{ role: 'system', content: systemPrompt }];
 
-        // Pre-inject greeting as already-sent message so LLM doesn't repeat it
-        if (!isAdmin && config.attendant?.greeting && !userProfile) { // AIDA usa a completionMessage em vez de greeting padrão
+        // Para AIDA: gerar abertura de imersão em vez de greeting padrão
+        if (!isAdmin && isAida && userProfile) {
+            const openingInstructions = buildImmersionOpeningPrompt(config, userProfile);
+            // Gerar primeira cena via LLM (assíncrono dentro da sessão)
+            chatHistory.push({ role: 'user', content: openingInstructions });
+            try {
+                const opening = await chat(chatHistory);
+                chatHistory = [{ role: 'system', content: systemPrompt }];
+                chatHistory.push({ role: 'assistant', content: opening });
+                greetingToSend = opening;
+            } catch (e) {
+                console.error('[AIDA] Erro ao gerar abertura de imersão:', e.message);
+                chatHistory = [{ role: 'system', content: systemPrompt }];
+            }
+        } else if (!isAdmin && config.attendant?.greeting && !userProfile) {
             const greeting = applyTimeGreeting(config.attendant.greeting);
             chatHistory.push({ role: 'assistant', content: greeting });
             greetingToSend = greeting;
         }
     } else if (!isAdmin && (dynamicRules.length > 0 || userProfile)) {
         // Sessão existente — rebuild do system prompt com regras dinâmicas e/ou perfil de aluno atualizados
-        chatHistory[0] = { role: 'system', content: getAttendantPrompt(config, dynamicRules, userProfile) };
+        const isAida = config.method?.name === 'MANA';
+        if (isAida && userProfile) {
+            chatHistory[0] = { role: 'system', content: buildAidaSystemPrompt(config, userProfile) };
+        } else {
+            chatHistory[0] = { role: 'system', content: getAttendantPrompt(config, dynamicRules, userProfile) };
+        }
     }
 
     // Preparar conteúdo do usuário (suporte a Visão)
@@ -285,6 +312,22 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
         }
 
         chatHistory.push({ role: 'assistant', content: reply });
+
+        // ── AIDA: Detectar encerramento de sessão + Logar interação ────────────
+        const isAida = config.method?.name === 'MANA';
+        if (isAida && !isAdmin) {
+            await setLastActivity(clientId, remoteJid);
+            await logInteraction(clientId, remoteJid, {
+                input: userMessage.substring(0, 300),
+                output: reply.substring(0, 300),
+                profile: userProfile ? { nivel: userProfile.nivel, interesse: userProfile.interesse } : null
+            });
+            if (detectSessionEnd(userMessage)) {
+                console.log(`[AIDA] Sessão encerrada por ${remoteJid}`);
+                await setSession(clientId, remoteJid, null);
+                return { text: reply + '\n\n_See you next time! 👋 Your progress is saved._', greeting: greetingToSend };
+            }
+        }
 
         // Sanitização de Memória: Remover o base64 gigante do histórico antes de salvar no Redis
         const historyToSave = chatHistory.map(msg => {
