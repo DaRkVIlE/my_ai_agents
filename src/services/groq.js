@@ -3,9 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { chat } = require('./llm');
-const { getSession, setSession, getDynamicRules, setDynamicRules, clearDynamicRules, logInteraction, setLastActivity } = require('./redis');
+const { getSession, setSession, getDynamicRules, setDynamicRules, clearDynamicRules, logInteraction, setLastActivity, saveGaps, getGaps } = require('./redis');
 const { buildAidaSystemPrompt, buildImmersionOpeningPrompt, detectSessionEnd } = require('./aida-engine');
 const apiRouter = require('./apiRouter');
+const { buildPermanentRulesBlock } = require('./training');
 
 const MAX_DYNAMIC_RULES = 10;
 
@@ -163,6 +164,12 @@ function getAttendantPrompt(config, dynamicRules = [], userProfile = null) {
         ? `\n\n⚠️ ATUALIZAÇÕES TEMPORÁRIAS DA GERÊNCIA (OBEDEÇA RIGOROSAMENTE):\n${dynamicRules.map(r => `- ${r}`).join('\n')}\nEstas instruções têm PRIORIDADE sobre o cardápio e regras padrão acima.`
         : '';
 
+    // Injeta regras permanentes treinadas pelo gestão (persiste entre restarts)
+    // clientId é passado como 3º arg quando disponível (ver chamada em generateResponse)
+    const permanentRulesBlock = buildPermanentRulesBlock(
+        (config._clientId || config.instanceName || 'felix').toLowerCase().replace(/[^a-z0-9]/g, '')
+    );
+
     // Injeta Perfil do Aluno (se aplicável ao bot)
     const profileBlock = userProfile
         ? `\n\n👤 PERFIL DO ALUNO (USE PARA PERSONALIZAR A INTERAÇÃO):\n- Nível Reportado: ${userProfile.nivel || 'Desconhecido'}\n- Interesse/Tema: ${userProfile.interesse || 'Geral'}\n- Objetivo: ${userProfile.objetivo || 'Não informado'}\n- Tom Preferido: ${userProfile.tom || 'Neutro'}\n\n*INSTRUÇÃO CRÍTICA:* Incorpore o interesse principal e o objetivo do aluno sutilmente nas suas respostas e na criação das cenas. Adapte seu vocabulário para o nível reportado.`
@@ -183,8 +190,8 @@ ${JSON.stringify(config.examples || config.attendant?.examples || [], null, 2)}
 2. NUNCA CONFIRME RESERVAS OU AGENDAMENTOS POR CONTA PRÓPRIA. Sempre encerre dizendo que a equipe irá confirmar a disponibilidade.
 3. A saudação inicial JÁ FOI ENVIADA para o cliente. Portanto, NUNCA inicie suas respostas com saudações (ex: "Olá", "Boa tarde", "Seja bem vindo").
 4. Vá direto ao ponto e responda DIRETAMENTE à pergunta ou comentário do usuário.
-5. Se o usuário mandar um áudio (aparecerá como [ÁUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.
-6. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.${reservaInstruction}${visionInstruction}${dynamicBlock}${profileBlock}`;
+5. Se o usuário mandar um áudio (aparecerá como [AUDIO TRANSCRITO]), responda ao conteúdo da transcrição naturalmente.
+6. Quando pedir para o cliente enviar uma foto/imagem para avaliação ou orçamento, instrua-o sempre a enviar a foto JUNTO com uma legenda ou áudio explicando os detalhes do que ele deseja.${reservaInstruction}${visionInstruction}${dynamicBlock}${permanentRulesBlock}${profileBlock}`;
 }
 
 async function generateResponse(clientId, config, remoteJid, userMessage, isAdmin = false, imageBase64 = null, userProfile = null) {
@@ -219,6 +226,27 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
             const prompt = config.adminPrompt || 'Você é o assistente interno do negócio. Responda de forma direta e prestativa.';
             await setSession(clientId, remoteJid, [{ role: 'system', content: prompt }]);
             return { text: '🔄 Modo alterado para: *FUNCIONÁRIO (Admin)*. O que manda, chefe?', greeting: null };
+        }
+    }
+
+    // ── INTERCEPTAÇÃO DE COMANDOS DE GAPS (AIDA - Modo Aluno) ─────────────
+    const isAida = config.method?.name === 'MANA';
+    if (!isAdmin && isAida) {
+        if (lowerMsg === 'meus gaps') {
+            const gaps = await getGaps(clientId, remoteJid);
+            if (!gaps || gaps.length === 0) {
+                return { text: 'Você ainda não tem gaps anotados. Continue praticando! 📚', greeting: null };
+            }
+            const gapList = gaps.slice(-10).map(g => `• *${g.en}* = ${g.pt}`).join('\n');
+            return { text: `🧩 *Seus últimos Gaps:*\n\n${gapList}\n\n👉 Para treinar, digite *treinar gaps*`, greeting: null };
+        }
+        if (lowerMsg === 'treinar gaps') {
+            const gaps = await getGaps(clientId, remoteJid);
+            if (!gaps || gaps.length === 0) {
+                return { text: 'Você ainda não tem gaps para treinar. Continue a imersão normal! 🚀', greeting: null };
+            }
+            const wordsToTrain = gaps.slice(-5).map(g => g.en).join(', ');
+            userMessage = `System Command: The user wants to practice their recent vocabulary gaps. Create a very short, new scene that naturally uses these words: [${wordsToTrain}]. Don't mention that you are doing this, just start the scene.`;
         }
     }
 
@@ -309,6 +337,32 @@ async function generateResponse(clientId, config, remoteJid, userMessage, isAdmi
             sendReservationNotification(config, campos, remoteJid).catch(e =>
                 console.error('[Reserva] Erro não tratado na notificação:', e.message)
             );
+        }
+
+        // ── DETECÇÃO DE KEYWORDS (AIDA) ──────────────────────────────────────────────
+        const keywordsMatch = reply.match(/\[KEYWORDS:\s*([^\]]+)\]/i);
+        if (keywordsMatch) {
+            const gaps = [];
+            const parts = keywordsMatch[1].split('•');
+            const formattedLines = [];
+            parts.forEach(p => {
+                const [en, pt] = p.split('=');
+                if (en && pt) {
+                    const e = en.trim();
+                    const p2 = pt.trim();
+                    gaps.push({ en: e, pt: p2 });
+                    formattedLines.push(`*${e}* = ${p2}`);
+                }
+            });
+            
+            reply = reply.replace(keywordsMatch[0], '').trim();
+            
+            if (gaps.length > 0) {
+                reply += `\n\n🔍 ${formattedLines.join(' • ')}`;
+                if (isAida && !isAdmin) {
+                    saveGaps(clientId, remoteJid, gaps).catch(e => console.error('[Gaps] Erro ao salvar gaps:', e.message));
+                }
+            }
         }
 
         chatHistory.push({ role: 'assistant', content: reply });

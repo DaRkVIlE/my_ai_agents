@@ -7,6 +7,7 @@ const { sendMessage, getMediaBase64 } = require('./services/evolution');
 const { handleOnboarding } = require('./services/onboarding');
 const { isSessionPaused, pauseSession, resumeSession, clearSession, isBotOnStandby, setBotStandby } = require('./services/redis');
 const { startAidaScheduler } = require('./services/aida-scheduler');
+const { handleTrainingCommand } = require('./services/training');
 
 const app = express();
 app.use(express.json());
@@ -31,7 +32,9 @@ const HANDOFF_KEYWORDS = [
 function loadClientConfig(clientId) {
     const configPath = path.join(__dirname, 'config', 'clients', `${clientId}.json`);
     if (fs.existsSync(configPath)) {
-        return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        config._clientId = clientId; // injeta o id para uso interno nos serviços
+        return config;
     }
     return null;
 }
@@ -172,6 +175,15 @@ async function handleWebhook(req, res) {
             if (lowerAdmin === 'ligar bot' || lowerAdmin === 'bot on' || lowerAdmin === 'ativar bot') {
                 await setBotStandby(clientId, false);
                 await sendMessage(clientId, remoteJid, '🟢 Bot *ativado*! Voltei a responder os clientes normalmente.', config);
+                return res.status(200).send('OK');
+            }
+
+            // ── Módulo de Treinamento Admin ──────────────────────────────────
+            const rawTextForTraining = msgData.message?.conversation || msgData.message?.extendedTextMessage?.text || '';
+            const trainingReply = await handleTrainingCommand(clientId, remoteJid, rawTextForTraining);
+            if (trainingReply !== null) {
+                await sendMessage(clientId, remoteJid, trainingReply, config);
+                console.log(`[Training] Comando de treinamento processado para ${clientId} de ${remoteJid}`);
                 return res.status(200).send('OK');
             }
         }
