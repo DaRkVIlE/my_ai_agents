@@ -45,7 +45,10 @@ async function createStudent(telegramId, nome) {
 }
 
 async function updateStudentProfile(telegramId, profile) {
-    const { nivel_numerico, interesse, objetivo, disponibilidade, tom, tutor_nome } = profile;
+    const {
+        nivel_numerico, interesse, objetivo, disponibilidade, tom, tutor_nome,
+        perfil_mana, idioma_alvo, triagem_completa
+    } = profile;
     const res = await pool.query(
         `UPDATE students 
          SET nivel_numerico = $2::smallint,
@@ -55,12 +58,16 @@ async function updateStudentProfile(telegramId, profile) {
              disponibilidade = $5::smallint,
              tom = $6,
              tutor_nome = $7,
+             perfil_mana = COALESCE($8, perfil_mana),
+             idioma_alvo = COALESCE($9, idioma_alvo),
+             triagem_completa = COALESCE($10, triagem_completa),
              onboarding_completo = TRUE,
              onboarding_step = 5,
              updated_at = NOW()
          WHERE telegram_id = $1
          RETURNING *`,
-        [telegramId, nivel_numerico, interesse, objetivo, disponibilidade, tom, tutor_nome]
+        [telegramId, nivel_numerico, interesse, objetivo, disponibilidade, tom, tutor_nome,
+         perfil_mana || null, idioma_alvo || null, triagem_completa ?? null]
     );
     return res.rows[0];
 }
@@ -87,6 +94,26 @@ async function updateStudentLevel(telegramId, newLevel) {
          SET nivel_numerico = $2::smallint, nivel = $2::text, updated_at = NOW()
          WHERE telegram_id = $1`,
         [telegramId, newLevel]
+    );
+}
+
+/**
+ * Atualiza o perfil MANA do aluno.
+ * Usado pelo Gabriel via comando /perfil_mana ou pelo sistema de triagem.
+ * @param {number} telegramId
+ * @param {string} perfilMana - 'zero' | 'travado' | 'especialista' | 'multilingue'
+ * @param {string} [idiomaAlvo] - obrigatório apenas para P4
+ * @param {boolean} [triagemCompleta] - true se diagnosticado, false se inferido
+ */
+async function updateManaProfile(telegramId, perfilMana, idiomaAlvo = null, triagemCompleta = false) {
+    await pool.query(
+        `UPDATE students
+         SET perfil_mana = $2,
+             idioma_alvo = COALESCE($3, idioma_alvo),
+             triagem_completa = $4,
+             updated_at = NOW()
+         WHERE telegram_id = $1`,
+        [telegramId, perfilMana, idiomaAlvo, triagemCompleta]
     );
 }
 
@@ -346,6 +373,7 @@ module.exports = {
     // Students
     getStudent, createStudent, updateStudentProfile, updateStudentAccess,
     updateStudentLevel, updateStudentPhase, updateStudentMode,
+    updateManaProfile,
     getAllActiveStudents, pauseStudent, endStudent,
     // Sessions
     getSession, upsertSession, clearSession,

@@ -127,7 +127,19 @@ Otherwise: ALWAYS respond in English only. ALWAYS end with a hook question or ac
 - Sessions end naturally when student writes: "bye", "bye bye", "see you", "tchau", "até mais", "ok obrigado", "valeu"
 - Keep responses concise (2-4 sentences max) — this is WhatsApp, not an essay
 - Use emojis sparingly, only when natural for your persona
-- Do NOT lecture. Do NOT explain grammar. Do NOT break character. EVER.`;
+- Do NOT lecture. Do NOT explain grammar. Do NOT break character. EVER.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 PARTIAL TRANSLATION (SCAFFOLDING)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${parseInt(nivel, 10) <= 2 ? `The student is a beginner (Level ${nivel}). For EVERY message you send, you MUST provide partial translation for 3 to 5 key words (nouns, main verbs) so they can understand the context.
+Format exactly like this at the very end of your response:
+[KEYWORDS: englishWord=PortugueseTranslation • anotherWord=Tradução]
+Example: "You arrive at the hotel. What do you say?"
+[KEYWORDS: arrive=chega • hotel=hotel]` : parseInt(nivel, 10) <= 4 ? `If the student types "?", "não entendi" or asks for help, DO NOT translate the whole sentence. Provide partial translation for 3 to 5 key words from your previous message.
+Format exactly like this at the very end of your response:
+[KEYWORDS: englishWord=PortugueseTranslation • anotherWord=Tradução]` : `(Partial translation disabled for this level. Answer normally in English.)`}
+`;
 }
 
 /**

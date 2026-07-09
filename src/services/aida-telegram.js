@@ -27,6 +27,20 @@ const aida = new Telegraf(process.env.AIDA_TELEGRAM_TOKEN);
 // ── Config do cliente AIDA (para reutilizar o serviço Groq existente) ─────────
 const aidaConfig = require('../config/clients/aida.json');
 
+// ── CLASSIFICAÇÃO MANA: Infere P1-P3 a partir das respostas do onboarding ───────────
+// P4 (Multilíngue) só é atribuído manualmente pelo Gabriel via /setperfil
+// pois exige identificar o idioma-alvo (além do inglês) explicitamente.
+function inferManaProfile(nivel, objetivo) {
+    const n = parseInt(nivel) || 3;
+    // P1 — O Zero: declara zero inglês
+    if (n <= 1) return 'zero';
+    // P2 — O Travado: entende mas trava, ou fala com dificuldade
+    if (n <= 5) return 'travado';
+    // P3 — O Especialista: intermediário ou avançado com objetivo específico
+    if (n >= 6) return 'especialista';
+    return 'travado'; // safe default
+}
+
 // ── ONBOARDING FLOW ───────────────────────────────────────────────────────────
 
 const ONBOARDING_QUESTIONS = aidaConfig.onboarding.questions;
@@ -95,6 +109,9 @@ aida.action(/^onb_(\d+)_(.+)$/, async (ctx) => {
 
         const tutorNome = TUTOR_PERSONAS[respostas.interesse]?.name || 'Jamie';
 
+        // ── Inferir perfil MANA automaticamente a partir do nível declarado ──
+        const perfilMana = inferManaProfile(respostas.nivel, respostas.objetivo);
+
         await db.updateStudentProfile(telegramId, {
             nivel_numerico: parseInt(respostas.nivel) || 3,
             interesse: respostas.interesse || 'general',
@@ -102,7 +119,17 @@ aida.action(/^onb_(\d+)_(.+)$/, async (ctx) => {
             disponibilidade: parseInt(respostas.disponibilidade) || 15,
             tom: respostas.tom || 'neutral',
             tutor_nome: tutorNome,
+            perfil_mana: perfilMana,
+            idioma_alvo: 'ingles',
+            triagem_completa: false, // inferido, não diagnosticado pela triagem conversacional
         });
+
+        const perfilLabels = {
+            zero: 'P1 — O Zero 🟥',
+            travado: 'P2 — O Travado 🟡',
+            especialista: 'P3 — O Especialista 🟢',
+            multilingue: 'P4 — O Multilíngue 📘',
+        };
 
         await ctx.reply(
             `${aidaConfig.onboarding.completionMessage}\n\nSeu tutor é o *${tutorNome}* 🎯`,
@@ -358,9 +385,19 @@ aida.command('perfil', async (ctx) => {
     const summary = await db.getAcquisitionSummary(telegramId);
     const tutor = TUTOR_PERSONAS[student.interesse];
 
+    const perfilLabels = {
+        zero: 'P1 — O Zero (começando do zero)',
+        travado: 'P2 — O Travado (sabe mas trava)',
+        especialista: 'P3 — O Especialista (fluente, nicho específico)',
+        multilingue: 'P4 — O Multilíngue (3ª língua)',
+    };
+
+    const triagemStatus = student.triagem_completa ? '✅ Diagnosticado' : '⚠️ Inferido (aguarda triagem)';
+
     await ctx.reply(
         `📊 *Seu Perfil AIDA*\n\n` +
         `👤 Tutor: ${tutor?.name || 'Jamie'}\n` +
+        `🧠 Perfil MANA: ${perfilLabels[student.perfil_mana] || student.perfil_mana} — ${triagemStatus}\n` +
         `📈 Nível: ${student.nivel_numerico}/10\n` +
         `🎯 Fase: ${student.fase}\n` +
         `📚 Sessões: ${student.sessoes_total}\n\n` +
@@ -411,6 +448,42 @@ aida.command('status', async (ctx) => {
         `📊 *Painel AIDA — ${students.length} aluno(s) ativo(s)*\n\n${lines.join('\n')}`,
         { parse_mode: 'Markdown' }
     );
+});
+
+// Comando admin: /setperfil [telegram_id] [perfil] [idioma_alvo?]
+// Permite que Gabriel corrija o perfil MANA manualmente.
+// Exemplo: /setperfil 123456789 especialista
+// Exemplo P4: /setperfil 123456789 multilingue espanhol
+aida.command('setperfil', async (ctx) => {
+    if (!isAdmin(ctx.from.id)) return;
+
+    const args = ctx.message.text.split(' ').slice(1);
+    if (args.length < 2) {
+        return ctx.reply('❌ Uso: /setperfil [telegram_id] [zero|travado|especialista|multilingue] [idioma?]');
+    }
+
+    const [targetId, perfil, idioma] = args;
+    const validPerfis = ['zero', 'travado', 'especialista', 'multilingue'];
+
+    if (!validPerfis.includes(perfil)) {
+        return ctx.reply(`❌ Perfil inválido. Use: ${validPerfis.join(', ')}`);
+    }
+    if (perfil === 'multilingue' && !idioma) {
+        return ctx.reply('❌ Para P4 (multilíngue), informe o idioma-alvo: espanhol, mandarin ou frances');
+    }
+
+    try {
+        await db.updateManaProfile(parseInt(targetId), perfil, idioma || null, true);
+        await ctx.reply(
+            `✅ Perfil MANA atualizado!\n` +
+            `Aluno: ${targetId}\n` +
+            `Novo perfil: *${perfil}*${idioma ? ` (${idioma})` : ''}\n` +
+            `Triagem marcada como: diagnosticada`,
+            { parse_mode: 'Markdown' }
+        );
+    } catch (err) {
+        await ctx.reply(`❌ Erro: ${err.message}`);
+    }
 });
 
 // ── CALIBRAÇÃO DE NÍVEL (Assíncrona) ─────────────────────────────────────────

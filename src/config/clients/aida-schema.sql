@@ -34,6 +34,16 @@ CREATE TABLE IF NOT EXISTS students (
     -- Tutor atribuído (baseado no interesse)
     tutor_nome      VARCHAR(50),
 
+    -- Perfil MANA (P1-P4) — determina a estratégia de abertura e ritmo de progressão
+    perfil_mana     VARCHAR(20) NOT NULL DEFAULT 'travado'
+                    CHECK (perfil_mana IN ('zero','travado','especialista','multilingue')),
+
+    -- Idioma-alvo (usado por P4 Multilíngue)
+    idioma_alvo     VARCHAR(30) NOT NULL DEFAULT 'ingles',
+
+    -- Triagem MANA concluída (false = perfil inferido, true = diagnosticado)
+    triagem_completa BOOLEAN NOT NULL DEFAULT FALSE,
+
     -- Fase do método
     fase            VARCHAR(20) NOT NULL DEFAULT 'descongelamento'
                     CHECK (fase IN ('descongelamento','fluxo','fluencia')),
@@ -296,3 +306,21 @@ WHERE s.status IN ('trial', 'ativo')
 ORDER BY s.ultimo_acesso DESC;
 
 COMMENT ON VIEW dashboard_gabriel IS 'Painel consolidado para Gabriel monitorar todos os alunos ativos.';
+
+-- ================================================================
+-- MIGRATION: Adicionar colunas MANA a databases existentes
+-- Executar apenas uma vez em produção (idempotente com IF NOT EXISTS)
+-- ================================================================
+ALTER TABLE students ADD COLUMN IF NOT EXISTS
+    perfil_mana VARCHAR(20) NOT NULL DEFAULT 'travado'
+    CHECK (perfil_mana IN ('zero','travado','especialista','multilingue'));
+
+ALTER TABLE students ADD COLUMN IF NOT EXISTS
+    idioma_alvo VARCHAR(30) NOT NULL DEFAULT 'ingles';
+
+ALTER TABLE students ADD COLUMN IF NOT EXISTS
+    triagem_completa BOOLEAN NOT NULL DEFAULT FALSE;
+
+COMMENT ON COLUMN students.perfil_mana IS 'P1=zero | P2=travado | P3=especialista | P4=multilingue — define abertura e ritmo de progressão MANA';
+COMMENT ON COLUMN students.idioma_alvo IS 'Para P4 (Multilíngue): idioma-alvo além do inglês (espanhol, mandarin, frances)';
+COMMENT ON COLUMN students.triagem_completa IS 'FALSE = perfil inferido pelo onboarding | TRUE = diagnosticado pela triagem conversacional MANA';

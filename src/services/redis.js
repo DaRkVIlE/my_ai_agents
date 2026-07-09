@@ -336,6 +336,40 @@ async function getLastActivity(clientId, jid) {
     }
 }
 
+// ── GAPS NOTEBOOK (AIDA) ─────────────────────────────────────────────────────
+async function saveGaps(clientId, jid, gapsArray) {
+    const redis = getClient();
+    const key = `gaps:${clientId}:${jid}`;
+    try {
+        if (!redis) return;
+        const existing = await redis.get(key);
+        const gaps = existing ? JSON.parse(existing) : [];
+        
+        for (const gap of gapsArray) {
+            gaps.push({ en: gap.en, pt: gap.pt, ts: new Date().toISOString() });
+        }
+        
+        // Mantém os últimos 50 gaps
+        if (gaps.length > 50) gaps.splice(0, gaps.length - 50);
+        await redis.set(key, JSON.stringify(gaps), 'EX', 60 * 60 * 24 * 60); // 60 dias
+    } catch (err) {
+        console.error('[Redis] saveGaps error:', err.message);
+    }
+}
+
+async function getGaps(clientId, jid) {
+    const redis = getClient();
+    const key = `gaps:${clientId}:${jid}`;
+    try {
+        if (!redis) return [];
+        const val = await redis.get(key);
+        return val ? JSON.parse(val) : [];
+    } catch (err) {
+        console.error('[Redis] getGaps error:', err.message);
+        return [];
+    }
+}
+
 module.exports = {
     getSession,
     setSession,
@@ -353,5 +387,7 @@ module.exports = {
     logInteraction,
     getInteractionLog,
     setLastActivity,
-    getLastActivity
+    getLastActivity,
+    saveGaps,
+    getGaps
 };

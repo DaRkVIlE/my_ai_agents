@@ -8,6 +8,7 @@ const { handleOnboarding } = require('./services/onboarding');
 const { isSessionPaused, pauseSession, resumeSession, clearSession, isBotOnStandby, setBotStandby } = require('./services/redis');
 const { startAidaScheduler } = require('./services/aida-scheduler');
 const { handleTrainingCommand } = require('./services/training');
+const { getClientConfig } = require('./services/client-config');
 
 const app = express();
 app.use(express.json());
@@ -29,15 +30,7 @@ const HANDOFF_KEYWORDS = [
     'falar com o paulo',
 ];
 
-function loadClientConfig(clientId) {
-    const configPath = path.join(__dirname, 'config', 'clients', `${clientId}.json`);
-    if (fs.existsSync(configPath)) {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        config._clientId = clientId; // injeta o id para uso interno nos serviços
-        return config;
-    }
-    return null;
-}
+
 
 function detectHandoff(text) {
     const lower = text.toLowerCase();
@@ -76,7 +69,7 @@ async function handleWebhook(req, res) {
 
     try {
         const { clientId } = req.params;
-        const config = loadClientConfig(clientId);
+        const config = await getClientConfig(clientId);
 
         if (!config) {
             console.error(`[Webhook] Config não encontrada: ${clientId}`);
@@ -310,6 +303,8 @@ async function handleWebhook(req, res) {
 }
 
 // ─── Rotas ─────────────────────────────────────────────────────────────────────
+app.use('/internal/manager', require('./routes/internal-manager'));
+
 app.post('/api/webhook/:clientId', handleWebhook);
 app.post('/api/webhook/:clientId/:event', handleWebhook);
 
@@ -340,10 +335,11 @@ app.listen(PORT, () => {
     
     // Iniciar Schedulers Específicos
     try {
-        const aidaConfig = loadClientConfig('aida');
-        if (aidaConfig) {
-            startAidaScheduler(aidaConfig);
-        }
+        getClientConfig('aida').then(aidaConfig => {
+            if (aidaConfig) {
+                startAidaScheduler(aidaConfig);
+            }
+        }).catch(e => console.error('[Startup] Failed to fetch AIDA config:', e.message));
     } catch (e) {
         console.error('[Startup] Failed to start AIDA scheduler:', e.message);
     }
