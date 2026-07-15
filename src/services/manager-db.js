@@ -59,6 +59,10 @@ async function createIndexes() {
     await onboardingCollection.createIndex({ manager_id: 1 });
     await onboardingCollection.createIndex({ started_at: 1 });
 
+    const publishHistoryCollection = db.collection('publish_history');
+    await publishHistoryCollection.createIndex({ tenant_id: 1 });
+    await publishHistoryCollection.createIndex({ published_at: -1 });
+
     console.log('[MongoDB] 📋 Índices criados/validados');
   } catch (err) {
     console.warn('[MongoDB] ⚠️ Erro ao criar índices:', err.message);
@@ -399,6 +403,140 @@ async function healthCheck() {
 }
 
 /**
+ * Funções específicas para a API interna /internal/v1
+ */
+async function getInternalConfig(tenantId) {
+  const db = await connect();
+  const manager = await db.collection('manager_profiles').findOne({ manager_id: tenantId });
+  const botConfig = await db.collection('bot_configurations')
+    .find({ manager_id: tenantId })
+    .sort({ created_at: -1 })
+    .limit(1)
+    .toArray();
+    
+  const currentBotConfig = botConfig.length > 0 ? botConfig[0] : null;
+  const version = currentBotConfig ? (currentBotConfig.version || 1) : 1;
+
+  return {
+    tenant_id: tenantId,
+    version,
+    profile: manager ? manager.config : null,
+    bot_config: currentBotConfig ? currentBotConfig.config : null,
+    updated_at: currentBotConfig ? currentBotConfig.created_at : (manager ? manager.updated_at : null),
+    updated_by: "system"
+  };
+}
+
+async function saveInternalConfigDraft(tenantId, expectedVersion, profile, botConfigData) {
+  const db = await connect();
+  
+  // Verifica versão
+  const currentConfig = await getInternalConfig(tenantId);
+  if (currentConfig.version !== expectedVersion && currentConfig.version !== 1) { // 1 is default if none
+      if (currentConfig.version !== expectedVersion && expectedVersion !== undefined) {
+         throw new Error(`CONFLICT: expected ${expectedVersion} but got ${currentConfig.version}`);
+      }
+  }
+
+  const nextVersion = (currentConfig.version || 1) + 1;
+
+  // Salva no manager_profiles (profile)
+  if (profile) {
+     await db.collection('manager_profiles').updateOne(
+       { manager_id: tenantId },
+       { $set: { config: profile, updated_at: new Date() } },
+       { upsert: true }
+     );
+  }
+
+  // Salva no bot_configurations (status draft)
+  await db.collection('bot_configurations').insertOne({
+    manager_id: tenantId,
+    version: nextVersion,
+    config: botConfigData,
+    created_at: new Date(),
+    status: 'draft'
+  });
+
+  return nextVersion;
+}
+
+async function publishInternalConfig(tenantId, version, publishedBy) {
+  const db = await connect();
+  
+  // Pega o draft dessa versão
+  const draft = await db.collection('bot_configurations').findOne({
+    manager_id: tenantId,
+    version: version,
+    status: 'draft'
+  });
+
+  if (!draft) {
+    // If it's already active, it might be a re-publish, or draft not found
+    const active = await db.collection('bot_configurations').findOne({
+      manager_id: tenantId,
+      version: version,
+      status: 'active'
+    });
+    if (!active) {
+       throw new Error("Draft not found for this version");
+    }
+  }
+
+  const publishedAt = new Date();
+
+  // Marca os outros como archived, e este como active
+  await db.collection('bot_configurations').updateMany(
+    { manager_id: tenantId },
+    { $set: { status: 'archived' } }
+  );
+  
+  await db.collection('bot_configurations').updateOne(
+    { manager_id: tenantId, version: version },
+    { $set: { status: 'active', updated_at: publishedAt } }
+  );
+
+  // Insere em publish_history
+  await db.collection('publish_history').insertOne({
+    tenant_id: tenantId,
+    version: version,
+    published_by: publishedBy,
+    published_at: publishedAt,
+    status: 'live'
+  });
+
+  return publishedAt;
+}
+
+async function getLastPublish(tenantId) {
+  const db = await connect();
+  const lastPublish = await db.collection('publish_history')
+    .find({ tenant_id: tenantId })
+    .sort({ published_at: -1 })
+    .limit(1)
+    .toArray();
+    
+  return lastPublish.length > 0 ? lastPublish[0] : null;
+}
+
+async function getAllTenantsInternal() {
+  const db = await connect();
+  const managers = await db.collection('manager_profiles').find({}).toArray();
+  const tenants = [];
+  
+  for (const m of managers) {
+    const lastPublish = await getLastPublish(m.manager_id);
+    tenants.push({
+      tenant_id: m.manager_id,
+      active: m.config?.bot_status === 'active',
+      last_published_version: lastPublish ? lastPublish.version : 1
+    });
+  }
+  
+  return tenants;
+}
+
+/**
  * Graceful disconnect
  */
 async function disconnect() {
@@ -430,5 +568,10 @@ module.exports = {
   listActiveManagers,
   getManagersByStatus,
   healthCheck,
+  getInternalConfig,
+  saveInternalConfigDraft,
+  publishInternalConfig,
+  getLastPublish,
+  getAllTenantsInternal,
   disconnect
 };
