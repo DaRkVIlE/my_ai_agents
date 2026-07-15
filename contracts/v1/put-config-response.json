@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "tenant_id": { "type": "string" },
+    "version": { "type": "number" },
+    "status": { "type": "string" }
+  },
+  "required": ["tenant_id", "version", "status"]
+}

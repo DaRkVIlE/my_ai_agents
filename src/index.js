@@ -304,6 +304,7 @@ async function handleWebhook(req, res) {
 
 // ─── Rotas ─────────────────────────────────────────────────────────────────────
 app.use('/internal/manager', require('./routes/internal-manager'));
+app.use('/internal/v1', require('./routes/internal-v1'));
 
 app.post('/api/webhook/:clientId', handleWebhook);
 app.post('/api/webhook/:clientId/:event', handleWebhook);

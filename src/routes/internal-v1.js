@@ -5,9 +5,12 @@ const redis = require('../services/redis');
 
 const router = express.Router();
 
-const SERVICE_TOKEN = process.env.KAIROS_INTERNAL_SERVICE_TOKEN || 'local-service-token';
-const SCOPE_SECRET = process.env.KAIROS_TENANT_SCOPE_SECRET || 'local-scope-secret';
-const ADMIN_TOKEN = process.env.KAIROS_INTERNAL_ADMIN_TOKEN || 'local-admin-token';
+// Helper para obter tokens atuais
+const getTokens = () => ({
+    service: process.env.KAIROS_INTERNAL_SERVICE_TOKEN || 'local-service-token',
+    scope: process.env.KAIROS_TENANT_SCOPE_SECRET || 'local-scope-secret',
+    admin: process.env.KAIROS_INTERNAL_ADMIN_TOKEN || 'local-admin-token'
+});
 
 // Middleware para verificar Service Token
 function verifyServiceToken(req, res, next) {
@@ -17,12 +20,14 @@ function verifyServiceToken(req, res, next) {
     }
     
     const token = authHeader.split(' ')[1];
-    if (token === ADMIN_TOKEN) {
+    const tokens = getTokens();
+    
+    if (token === tokens.admin) {
         req.isAdminToken = true;
         return next();
     }
     
-    if (token !== SERVICE_TOKEN) {
+    if (token !== tokens.service) {
         return res.status(401).json({ error: 'Invalid service token' });
     }
     
@@ -45,7 +50,7 @@ function verifyTenantScope(req, res, next) {
     }
     
     try {
-        const decoded = jwt.verify(scopeToken, SCOPE_SECRET);
+        const decoded = jwt.verify(scopeToken, getTokens().scope);
         if (decoded.tenant_id !== targetTenant) {
             return res.status(403).json({ error: 'Scope mismatch: token does not authorize this tenant' });
         }

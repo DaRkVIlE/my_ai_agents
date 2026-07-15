@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "tenant_id": { "type": "string" },
+    "evolution_session": { "type": "string" },
+    "queue_depth": { "type": ["number", "null"] },
+    "last_message_processed_at": { "type": ["string", "null"] },
+    "last_published_version": { "type": ["number", "null"] },
+    "degraded": { "type": "boolean" },
+    "degraded_reason": { "type": "string" }
+  },
+  "required": ["tenant_id", "evolution_session", "degraded"]
+}
